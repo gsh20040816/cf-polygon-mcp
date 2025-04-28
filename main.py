@@ -397,3 +397,7 @@ def get_contest_problems(
 
 if __name__ == "__main__":
     mcp.run()
+    
+# 命令行入口点函数
+def serve_cli():
+    mcp.run()
