@@ -35,7 +35,6 @@ ENV/
 .DS_Store
 
 # Project specific
-uv.lock
 *.log
 .coverage
 htmlcov/
