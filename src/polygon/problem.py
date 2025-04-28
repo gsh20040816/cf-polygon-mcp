@@ -1,7 +1,7 @@
-from typing import Optional, Dict, Union
+from typing import Optional, Dict, Union, List
 from .models import (
     ProblemInfo, AccessType, AccessDeniedException,
-    Statement, LanguageMap, FileType
+    Statement, LanguageMap, FileType, Solution
 )
 
 class ProblemSession:
@@ -193,4 +193,50 @@ class ProblemSession:
             "type": file_type.value,
             "name": name
         }
-        return self._make_problem_request("problem.viewFile", params, raw_response=True) 
+        return self._make_problem_request("problem.viewFile", params, raw_response=True)
+        
+    def get_solutions(self) -> List[Solution]:
+        """
+        获取题目的所有解决方案
+        
+        Returns:
+            List[Solution]: 解决方案列表，每个解决方案包含：
+                - name: 文件名
+                - modificationTimeSeconds: 修改时间
+                - length: 文件长度
+                - tag: 解法标签（main/ok/wa/tl等）
+                
+        Example:
+            >>> solutions = problem.get_solutions()
+            >>> for solution in solutions:
+            >>>     print(f"Solution: {solution.name}")
+            >>>     print(f"Type: {solution.get_verdict()}")
+            >>>     if solution.is_correct():
+            >>>         print("This is a correct solution")
+        """
+        response = self._make_problem_request("problem.solutions")
+        return [Solution.from_dict(sol) for sol in response["result"]]
+        
+    def view_solution(self, name: str) -> bytes:
+        """
+        获取解决方案源代码
+        
+        Args:
+            name: 解决方案文件名
+            
+        Returns:
+            bytes: 解决方案源代码的原始内容
+            
+        Example:
+            >>> # 查看主要解法的源代码
+            >>> content = problem.view_solution("main.cpp")
+            >>> print(content.decode('utf-8'))
+            >>> 
+            >>> # 查看错误解法的源代码
+            >>> content = problem.view_solution("wrong_answer.py")
+            >>> print(content.decode('utf-8'))
+        """
+        params = {
+            "name": name
+        }
+        return self._make_problem_request("problem.viewSolution", params, raw_response=True) 

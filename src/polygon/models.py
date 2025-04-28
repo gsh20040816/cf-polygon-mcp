@@ -23,6 +23,31 @@ class SourceType(str, Enum):
     INTERACTOR = "interactor"  # 交互器
     MAIN = "main"  # 主文件
 
+class SolutionTag(str, Enum):
+    """
+    解决方案标签
+    
+    Attributes:
+        MA: 主要解法（Main solution）
+        OK: 正确解法（Accepted）
+        RJ: 会被评测系统拒绝的解法（Rejected）
+        TL: 超时解法（Time Limit Exceeded）
+        TO: 解法可能超时也可能通过（Time limit exceeded OR Accepted）
+        WA: 错误答案解法（Wrong Answer）
+        PE: 格式错误解法（Presentation Error）
+        ML: 超内存解法（Memory Limit Exceeded）
+        RE: 运行时错误解法（Runtime Error）
+    """
+    MA = "MA"  # Main solution
+    OK = "OK"  # Accepted
+    RJ = "RJ"  # Rejected
+    TL = "TL"  # Time Limit Exceeded
+    TO = "TO"  # Time limit exceeded OR Accepted
+    WA = "WA"  # Wrong Answer
+    PE = "PE"  # Presentation Error
+    ML = "ML"  # Memory Limit Exceeded
+    RE = "RE"  # Runtime Error
+
 class ResourceAdvancedProperties(BaseModel):
     """资源文件的高级属性"""
     # 根据实际API返回补充字段
@@ -65,6 +90,88 @@ class File(BaseModel):
             )
             
         return cls(**data)
+
+class Solution(BaseModel):
+    """
+    表示题目的解决方案
+    
+    Attributes:
+        name: 解决方案文件名
+        modificationTimeSeconds: 修改时间（Unix时间戳）
+        length: 文件长度（字节）
+        sourceType: 源文件类型（必须是'solution'）
+        tag: 解决方案标签，表示这个解法的类型和预期结果
+    """
+    name: str
+    modificationTimeSeconds: datetime
+    length: int
+    sourceType: SourceType = SourceType.SOLUTION
+    tag: SolutionTag
+    
+    @classmethod
+    def from_dict(cls, data: dict) -> "Solution":
+        """从API响应数据创建Solution实例"""
+        # 转换时间戳为datetime对象
+        if "modificationTimeSeconds" in data:
+            data["modificationTimeSeconds"] = datetime.fromtimestamp(
+                int(data["modificationTimeSeconds"])
+            )
+            
+        # 确保sourceType是solution
+        data["sourceType"] = SourceType.SOLUTION
+        
+        # 转换tag为枚举
+        if "tag" in data:
+            data["tag"] = SolutionTag(data["tag"])
+            
+        return cls(**data)
+    
+    def is_correct(self) -> bool:
+        """
+        判断是否为正确解法
+        
+        Returns:
+            bool: 如果是MA（主要解法）或OK（正确解法）则返回True
+        """
+        return self.tag in (SolutionTag.MA, SolutionTag.OK)
+    
+    def is_wrong(self) -> bool:
+        """
+        判断是否为错误解法
+        
+        Returns:
+            bool: 如果不是正确解法且不是TO（可能正确可能超时）则返回True
+        """
+        return not (self.is_correct() or self.tag == SolutionTag.TO)
+    
+    def is_uncertain(self) -> bool:
+        """
+        判断是否为结果不确定的解法
+        
+        Returns:
+            bool: 如果是TO（可能正确可能超时）则返回True
+        """
+        return self.tag == SolutionTag.TO
+    
+    def get_verdict(self) -> str:
+        """
+        获取解法的预期判定结果
+        
+        Returns:
+            str: 人类可读的预期判定结果
+        """
+        tag_verdicts = {
+            SolutionTag.MA: "Accepted (Main)",
+            SolutionTag.OK: "Accepted",
+            SolutionTag.RJ: "Rejected",
+            SolutionTag.TL: "Time Limit Exceeded",
+            SolutionTag.TO: "Time Limit Exceeded or Accepted",
+            SolutionTag.WA: "Wrong Answer",
+            SolutionTag.PE: "Presentation Error",
+            SolutionTag.ML: "Memory Limit Exceeded",
+            SolutionTag.RE: "Runtime Error"
+        }
+        return tag_verdicts[self.tag]
 
 class PolygonException(Exception):
     """Polygon API 异常基类"""

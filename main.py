@@ -1,7 +1,7 @@
 from mcp.server.fastmcp import FastMCP
 from src.tools.problems import get_polygon_problems, get_polygon_problem_info
 from typing import List, Optional, Dict
-from src.polygon.models import Problem, ProblemInfo, Statement, LanguageMap, FileType
+from src.polygon.models import Problem, ProblemInfo, Statement, LanguageMap, FileType, Solution
 from src.polygon.client import PolygonClient
 import os
 
@@ -230,6 +230,96 @@ def view_problem_file(
     client = PolygonClient(api_key, api_secret)
     session = client.create_problem_session(problem_id, pin)
     return session.view_file(file_type_enum, file_name)
+
+@mcp.tool()
+def get_problem_solutions(problem_id: int, pin: Optional[str] = None) -> List[Solution]:
+    """
+    获取Polygon题目的所有解决方案
+    
+    Args:
+        problem_id: 题目ID
+        pin: 题目的PIN码（如果有）
+        
+    Returns:
+        List[Solution]: 解决方案列表，每个Solution包含：
+            - name: 文件名
+            - modificationTimeSeconds: 修改时间
+            - length: 文件长度
+            - tag: 解法标签，可能的值：
+                - MA: 主要解法（Main solution）
+                - OK: 正确解法（Accepted）
+                - RJ: 会被评测系统拒绝的解法（Rejected）
+                - TL: 超时解法（Time Limit Exceeded）
+                - TO: 解法可能超时也可能通过（Time limit exceeded OR Accepted）
+                - WA: 错误答案解法（Wrong Answer）
+                - PE: 格式错误解法（Presentation Error）
+                - ML: 超内存解法（Memory Limit Exceeded）
+                - RE: 运行时错误解法（Runtime Error）
+            
+    Raises:
+        ValueError: 当环境变量未设置时抛出
+        AccessDeniedException: 当没有足够的访问权限时抛出
+        
+    Example:
+        >>> solutions = get_problem_solutions(12345)
+        >>> for solution in solutions:
+        >>>     print(f"Solution: {solution.name}")
+        >>>     print(f"Expected verdict: {solution.get_verdict()}")
+        >>>     if solution.is_correct():
+        >>>         print("This is a correct solution")
+        >>>     elif solution.is_uncertain():
+        >>>         print("This solution might be correct or might exceed time limit")
+    """
+    api_key, api_secret = _get_api_credentials()
+    
+    client = PolygonClient(api_key, api_secret)
+    session = client.create_problem_session(problem_id, pin)
+    return session.get_solutions()
+
+@mcp.tool()
+def view_problem_solution(
+    problem_id: int,
+    solution_name: str,
+    pin: Optional[str] = None
+) -> bytes:
+    """
+    获取Polygon题目中某个解决方案的源代码
+    
+    Args:
+        problem_id: 题目ID
+        solution_name: 解决方案文件名
+        pin: 题目的PIN码（如果有）
+        
+    Returns:
+        bytes: 解决方案源代码的原始内容
+        
+    Raises:
+        ValueError: 当环境变量未设置时抛出
+        AccessDeniedException: 当没有足够的访问权限时抛出
+        
+    Example:
+        >>> # 获取并查看解决方案列表
+        >>> solutions = get_problem_solutions(12345)
+        >>> for solution in solutions:
+        >>>     print(f"Solution: {solution.name}")
+        >>> 
+        >>> # 查看特定解决方案的源代码
+        >>> content = view_problem_solution(12345, "main.cpp")
+        >>> print(content.decode('utf-8'))
+        >>> 
+        >>> # 如果题目有PIN码
+        >>> content = view_problem_solution(
+        >>>     problem_id=12345,
+        >>>     solution_name="main.cpp",
+        >>>     pin="your_pin_code"
+        >>> )
+        >>> print(content.decode('utf-8'))
+    """
+    api_key, api_secret = _get_api_credentials()
+    
+    client = PolygonClient(api_key, api_secret)
+    session = client.create_problem_session(problem_id, pin)
+    return session.view_solution(solution_name)
 
 if __name__ == "__main__":
     mcp.run()
