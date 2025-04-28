@@ -1,6 +1,6 @@
 from typing import List, Optional
 from ..polygon.client import PolygonClient
-from ..polygon.models import Problem
+from ..polygon.models import Problem, ProblemInfo
 
 def get_polygon_problems(
     api_key: str,
@@ -31,3 +31,18 @@ def get_polygon_problems(
         name=name,
         owner=owner
     )
+
+def get_polygon_problem_info(api_key: str, api_secret: str, problem_id: int) -> ProblemInfo:
+    """
+    获取Polygon中特定题目的基本信息
+    
+    Args:
+        api_key: Polygon API密钥
+        api_secret: Polygon API密钥对应的secret
+        problem_id: 题目ID
+        
+    Returns:
+        ProblemInfo: 题目的基本信息
+    """
+    client = PolygonClient(api_key, api_secret)
+    return client.get_problem_info(problem_id)

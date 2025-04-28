@@ -1,6 +1,7 @@
 import requests
 from typing import List, Dict, Optional
-from .models import Problem
+from .models import Problem, ProblemInfo
+from .problem import ProblemSession
 import time
 import random
 import hashlib
@@ -96,3 +97,33 @@ class PolygonClient:
             
         response = self._make_request("problems.list", params)
         return [Problem.from_dict(prob) for prob in response.get("result", [])]
+
+    def get_problem_info(self, problem_id: int) -> ProblemInfo:
+        """
+        获取题目的基本信息
+        
+        Args:
+            problem_id: 题目ID
+            
+        Returns:
+            ProblemInfo: 题目的基本信息
+        """
+        params = {
+            "problemId": str(problem_id)
+        }
+        
+        response = self._make_request("problem.info", params)
+        return ProblemInfo.from_dict(response["result"])
+        
+    def create_problem_session(self, problem_id: int, pin: Optional[str] = None) -> ProblemSession:
+        """
+        创建一个题目会话，用于执行题目相关的操作
+        
+        Args:
+            problem_id: 题目ID
+            pin: 题目的PIN码（如果有）
+            
+        Returns:
+            ProblemSession: 题目会话对象
+        """
+        return ProblemSession(self, problem_id, pin)
