@@ -1,5 +1,5 @@
 from typing import Optional, Dict
-from .models import ProblemInfo, AccessType, AccessDeniedException
+from .models import ProblemInfo, AccessType, AccessDeniedException, Statement, LanguageMap
 
 class ProblemSession:
     """处理特定题目的会话类"""
@@ -93,4 +93,24 @@ class ProblemSession:
             params["interactive"] = "true" if interactive else "false"
             
         response = self._make_problem_request("problem.updateInfo", params)
-        return ProblemInfo.from_dict(response["result"]) 
+        return ProblemInfo.from_dict(response["result"])
+        
+    def get_statements(self) -> LanguageMap[Statement]:
+        """
+        获取题目的多语言陈述
+        
+        Returns:
+            LanguageMap[Statement]: 语言到题目陈述的映射
+            
+        Example:
+            >>> statements = problem.get_statements()
+            >>> # 获取英文陈述
+            >>> en_statement = statements.get("english")
+            >>> if en_statement:
+            >>>     print(f"Title: {en_statement.name}")
+            >>>     print(f"Description: {en_statement.legend}")
+            >>> # 获取所有可用语言
+            >>> print(f"Available languages: {list(statements.keys())}")
+        """
+        response = self._make_problem_request("problem.statements")
+        return LanguageMap.from_dict(response["result"], Statement) 

@@ -1,14 +1,28 @@
 from mcp.server.fastmcp import FastMCP
 from src.tools.problems import get_polygon_problems, get_polygon_problem_info
-from typing import List, Optional
-from src.polygon.models import Problem, ProblemInfo
+from typing import List, Optional, Dict
+from src.polygon.models import Problem, ProblemInfo, Statement, LanguageMap
+from src.polygon.client import PolygonClient
 import os
 
 # Create an MCP server
 mcp = FastMCP("CF-Polygon-MCP")
 
+def _get_api_credentials() -> tuple[str, str]:
+    """获取API凭证"""
+    api_key = os.getenv("POLYGON_API_KEY")
+    api_secret = os.getenv("POLYGON_API_SECRET")
+    
+    if not api_key or not api_secret:
+        raise ValueError(
+            "请设置环境变量 POLYGON_API_KEY 和 POLYGON_API_SECRET\n"
+            "可以通过以下方式设置:\n"
+            "export POLYGON_API_KEY=your_key\n"
+            "export POLYGON_API_SECRET=your_secret"
+        )
+    
+    return api_key, api_secret
 
-# Add an addition tool
 @mcp.tool()
 def get_problems(
     show_deleted: Optional[bool] = None,
@@ -31,16 +45,7 @@ def get_problems(
     Raises:
         ValueError: 当环境变量未设置时抛出
     """
-    api_key = os.getenv("POLYGON_API_KEY")
-    api_secret = os.getenv("POLYGON_API_SECRET")
-    
-    if not api_key or not api_secret:
-        raise ValueError(
-            "请设置环境变量 POLYGON_API_KEY 和 POLYGON_API_SECRET\n"
-            "可以通过以下方式设置:\n"
-            "export POLYGON_API_KEY=your_key\n"
-            "export POLYGON_API_SECRET=your_secret"
-        )
+    api_key, api_secret = _get_api_credentials()
     
     return get_polygon_problems(
         api_key=api_key,
@@ -50,7 +55,6 @@ def get_problems(
         name=name,
         owner=owner
     )
-
 
 @mcp.tool()
 def get_problem_info(problem_id: int) -> ProblemInfo:
@@ -71,16 +75,7 @@ def get_problem_info(problem_id: int) -> ProblemInfo:
     Raises:
         ValueError: 当环境变量未设置时抛出
     """
-    api_key = os.getenv("POLYGON_API_KEY")
-    api_secret = os.getenv("POLYGON_API_SECRET")
-    
-    if not api_key or not api_secret:
-        raise ValueError(
-            "请设置环境变量 POLYGON_API_KEY 和 POLYGON_API_SECRET\n"
-            "可以通过以下方式设置:\n"
-            "export POLYGON_API_KEY=your_key\n"
-            "export POLYGON_API_SECRET=your_secret"
-        )
+    api_key, api_secret = _get_api_credentials()
     
     return get_polygon_problem_info(
         api_key=api_key,
@@ -88,6 +83,37 @@ def get_problem_info(problem_id: int) -> ProblemInfo:
         problem_id=problem_id
     )
 
+@mcp.tool()
+def get_problem_statements(problem_id: int, pin: Optional[str] = None) -> Dict[str, Statement]:
+    """
+    获取Polygon题目的多语言陈述
+    
+    Args:
+        problem_id: 题目ID
+        pin: 题目的PIN码（如果有）
+        
+    Returns:
+        Dict[str, Statement]: 语言代码到题目陈述的映射，每个Statement包含：
+            - encoding: 陈述的编码格式
+            - name: 该语言下的题目名称
+            - legend: 题目描述
+            - input: 输入格式说明
+            - output: 输出格式说明
+            - scoring: 评分说明（可选）
+            - interaction: 交互协议说明（仅用于交互题，可选）
+            - notes: 题目注释（可选）
+            - tutorial: 题解（可选）
+            
+    Raises:
+        ValueError: 当环境变量未设置时抛出
+        AccessDeniedException: 当没有足够的访问权限时抛出
+    """
+    api_key, api_secret = _get_api_credentials()
+    
+    client = PolygonClient(api_key, api_secret)
+    session = client.create_problem_session(problem_id, pin)
+    statements = session.get_statements()
+    return statements.items
 
 if __name__ == "__main__":
     mcp.run()

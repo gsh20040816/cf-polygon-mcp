@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, Dict, TypeVar, Generic
 from enum import Enum
 
 class AccessType(str, Enum):
@@ -15,6 +15,46 @@ class PolygonException(Exception):
 class AccessDeniedException(PolygonException):
     """访问权限不足异常"""
     pass
+
+T = TypeVar('T')
+
+class LanguageMap(BaseModel, Generic[T]):
+    """
+    语言到特定类型的映射
+    
+    用于表示不同语言版本的内容，如题目描述、题解等
+    """
+    items: Dict[str, T]
+    
+    @classmethod
+    def from_dict(cls, data: dict, item_class) -> "LanguageMap[T]":
+        """从API响应数据创建LanguageMap实例"""
+        return cls(
+            items={
+                lang: item_class.from_dict(item_data)
+                for lang, item_data in data.items()
+            }
+        )
+    
+    def __getitem__(self, key: str) -> T:
+        """通过语言代码获取对应的内容"""
+        return self.items[key]
+    
+    def get(self, key: str, default: Optional[T] = None) -> Optional[T]:
+        """安全地获取指定语言的内容"""
+        return self.items.get(key, default)
+    
+    def keys(self):
+        """获取所有可用的语言代码"""
+        return self.items.keys()
+    
+    def values(self):
+        """获取所有语言版本的内容"""
+        return self.items.values()
+    
+    def items(self):
+        """获取所有(语言代码, 内容)对"""
+        return self.items.items()
 
 class ProblemInfo(BaseModel):
     """
@@ -82,4 +122,44 @@ class Problem(BaseModel):
             revision=data.get("revision"),
             latestPackage=data.get("latestPackage"),
             modified=data.get("modified", False)
+        )
+
+class Statement(BaseModel):
+    """
+    表示题目的陈述/描述
+    
+    Attributes:
+        encoding: 陈述的编码格式
+        name: 该语言下的题目名称
+        legend: 题目描述
+        input: 输入格式说明
+        output: 输出格式说明
+        scoring: 评分说明
+        interaction: 交互协议说明（仅用于交互题）
+        notes: 题目注释
+        tutorial: 题解
+    """
+    encoding: str
+    name: str
+    legend: str
+    input: str
+    output: str
+    scoring: Optional[str] = None
+    interaction: Optional[str] = None
+    notes: Optional[str] = None
+    tutorial: Optional[str] = None
+    
+    @classmethod
+    def from_dict(cls, data: dict) -> "Statement":
+        """从API响应数据创建Statement实例"""
+        return cls(
+            encoding=data["encoding"],
+            name=data["name"],
+            legend=data["legend"],
+            input=data["input"],
+            output=data["output"],
+            scoring=data.get("scoring"),
+            interaction=data.get("interaction"),
+            notes=data.get("notes"),
+            tutorial=data.get("tutorial")
         )

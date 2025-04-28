@@ -1,6 +1,6 @@
-from typing import List, Optional
+from typing import List, Optional, Dict
 from ..polygon.client import PolygonClient
-from ..polygon.models import Problem, ProblemInfo
+from ..polygon.models import Problem, ProblemInfo, Statement, LanguageMap
 
 def get_polygon_problems(
     api_key: str,
@@ -46,3 +46,26 @@ def get_polygon_problem_info(api_key: str, api_secret: str, problem_id: int) -> 
     """
     client = PolygonClient(api_key, api_secret)
     return client.get_problem_info(problem_id)
+
+def get_polygon_problem_statements(
+    api_key: str,
+    api_secret: str,
+    problem_id: int,
+    pin: Optional[str] = None
+) -> Dict[str, Statement]:
+    """
+    获取Polygon中特定题目的多语言陈述
+    
+    Args:
+        api_key: Polygon API密钥
+        api_secret: Polygon API密钥对应的secret
+        problem_id: 题目ID
+        pin: 题目的PIN码（如果有）
+        
+    Returns:
+        Dict[str, Statement]: 语言代码到题目陈述的映射
+    """
+    client = PolygonClient(api_key, api_secret)
+    session = client.create_problem_session(problem_id, pin)
+    statements = session.get_statements()
+    return statements.items
