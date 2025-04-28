@@ -115,5 +115,71 @@ def get_problem_statements(problem_id: int, pin: Optional[str] = None) -> Dict[s
     statements = session.get_statements()
     return statements.items
 
+@mcp.tool()
+def get_problem_checker(problem_id: int, pin: Optional[str] = None) -> str:
+    """
+    获取Polygon题目当前使用的checker文件名
+    
+    Args:
+        problem_id: 题目ID
+        pin: 题目的PIN码（如果有）
+        
+    Returns:
+        str: checker文件名
+        
+    Raises:
+        ValueError: 当环境变量未设置时抛出
+        AccessDeniedException: 当没有足够的访问权限时抛出
+    """
+    api_key, api_secret = _get_api_credentials()
+    
+    client = PolygonClient(api_key, api_secret)
+    session = client.create_problem_session(problem_id, pin)
+    return session.get_checker()
+
+@mcp.tool()
+def get_problem_validator(problem_id: int, pin: Optional[str] = None) -> str:
+    """
+    获取Polygon题目当前使用的validator文件名
+    
+    Args:
+        problem_id: 题目ID
+        pin: 题目的PIN码（如果有）
+        
+    Returns:
+        str: validator文件名
+        
+    Raises:
+        ValueError: 当环境变量未设置时抛出
+        AccessDeniedException: 当没有足够的访问权限时抛出
+    """
+    api_key, api_secret = _get_api_credentials()
+    
+    client = PolygonClient(api_key, api_secret)
+    session = client.create_problem_session(problem_id, pin)
+    return session.get_validator()
+
+@mcp.tool()
+def get_problem_interactor(problem_id: int, pin: Optional[str] = None) -> str:
+    """
+    获取Polygon题目当前使用的interactor文件名
+    
+    Args:
+        problem_id: 题目ID
+        pin: 题目的PIN码（如果有）
+        
+    Returns:
+        str: interactor文件名。如果题目不是交互题，可能返回空字符串
+        
+    Raises:
+        ValueError: 当环境变量未设置时抛出
+        AccessDeniedException: 当没有足够的访问权限时抛出
+    """
+    api_key, api_secret = _get_api_credentials()
+    
+    client = PolygonClient(api_key, api_secret)
+    session = client.create_problem_session(problem_id, pin)
+    return session.get_interactor()
+
 if __name__ == "__main__":
     mcp.run()

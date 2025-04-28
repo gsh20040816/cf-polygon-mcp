@@ -1,12 +1,64 @@
 from pydantic import BaseModel
 from typing import Optional, Dict, TypeVar, Generic
 from enum import Enum
+from datetime import datetime
 
 class AccessType(str, Enum):
     """题目访问权限类型"""
     READ = "READ"
     WRITE = "WRITE"
     OWNER = "OWNER"
+
+class SourceType(str, Enum):
+    """源文件类型"""
+    SOLUTION = "solution"  # 解决方案
+    VALIDATOR = "validator"  # 验证器
+    CHECKER = "checker"  # 检查器
+    INTERACTOR = "interactor"  # 交互器
+    MAIN = "main"  # 主文件
+
+class ResourceAdvancedProperties(BaseModel):
+    """资源文件的高级属性"""
+    # 根据实际API返回补充字段
+    pass
+
+class File(BaseModel):
+    """
+    表示一个资源、源代码或辅助文件
+    
+    Attributes:
+        name: 文件名
+        modificationTimeSeconds: 文件修改时间（Unix时间戳）
+        length: 文件长度（字节）
+        sourceType: 源文件类型（仅对源文件有效）
+        resourceAdvancedProperties: 资源文件的高级属性（可选）
+    """
+    name: str
+    modificationTimeSeconds: datetime
+    length: int
+    sourceType: Optional[SourceType] = None
+    resourceAdvancedProperties: Optional[ResourceAdvancedProperties] = None
+    
+    @classmethod
+    def from_dict(cls, data: dict) -> "File":
+        """从API响应数据创建File实例"""
+        # 转换时间戳为datetime对象
+        if "modificationTimeSeconds" in data:
+            data["modificationTimeSeconds"] = datetime.fromtimestamp(
+                int(data["modificationTimeSeconds"])
+            )
+        
+        # 如果存在sourceType，转换为枚举
+        if "sourceType" in data:
+            data["sourceType"] = SourceType(data["sourceType"])
+            
+        # 如果存在resourceAdvancedProperties，创建对象
+        if "resourceAdvancedProperties" in data and data["resourceAdvancedProperties"]:
+            data["resourceAdvancedProperties"] = ResourceAdvancedProperties(
+                **data["resourceAdvancedProperties"]
+            )
+            
+        return cls(**data)
 
 class PolygonException(Exception):
     """Polygon API 异常基类"""

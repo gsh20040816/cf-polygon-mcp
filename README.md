@@ -13,18 +13,18 @@
 1. 确保你的 Python 版本 >= 3.13
 2. 克隆仓库：
 ```bash
-git clone https://github.com/your-username/cf-polygon-mcp.git
+git clone https://github.com/gsh20040816/cf-polygon-mcp.git
 cd cf-polygon-mcp
 ```
 
 3. 安装依赖：
 ```bash
-pip install -e .
+uv sync
 ```
 
 ## 配置
 
-在使用之前，你需要设置 Polygon API 密钥。你可以在 [Polygon 设置页面](https://polygon.codeforces.com/api) 获取 API Key 和 Secret。
+在使用之前，你需要设置 Polygon API 密钥。你可以在 [Polygon 设置页面](https://polygon.codeforces.com/settings) 获取 API Key 和 Secret。
 
 将以下环境变量添加到你的 shell 配置文件（如 `~/.bashrc` 或 `~/.zshrc`）中：
 
@@ -38,7 +38,7 @@ export POLYGON_API_SECRET=your_secret
 ### 启动服务
 
 ```bash
-python main.py
+uv run main.py
 ```
 
 ### 获取题目列表

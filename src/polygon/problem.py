@@ -113,4 +113,49 @@ class ProblemSession:
             >>> print(f"Available languages: {list(statements.keys())}")
         """
         response = self._make_problem_request("problem.statements")
-        return LanguageMap.from_dict(response["result"], Statement) 
+        return LanguageMap.from_dict(response["result"], Statement)
+        
+    def get_checker(self) -> str:
+        """
+        获取当前设置的checker文件名
+        
+        Returns:
+            str: checker文件名
+            
+        Example:
+            >>> checker_name = problem.get_checker()
+            >>> print(f"Current checker: {checker_name}")
+        """
+        response = self._make_problem_request("problem.checker")
+        return response["result"]
+        
+    def get_validator(self) -> str:
+        """
+        获取当前设置的validator文件名
+        
+        Returns:
+            str: validator文件名
+            
+        Example:
+            >>> validator_name = problem.get_validator()
+            >>> print(f"Current validator: {validator_name}")
+        """
+        response = self._make_problem_request("problem.validator")
+        return response["result"]
+        
+    def get_interactor(self) -> str:
+        """
+        获取当前设置的interactor文件名
+        
+        Returns:
+            str: interactor文件名。如果题目不是交互题，可能返回空字符串
+            
+        Example:
+            >>> interactor_name = problem.get_interactor()
+            >>> if interactor_name:
+            >>>     print(f"Current interactor: {interactor_name}")
+            >>> else:
+            >>>     print("Not an interactive problem")
+        """
+        response = self._make_problem_request("problem.interactor")
+        return response["result"] 
