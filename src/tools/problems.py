@@ -1,15 +1,8 @@
-from mcp.server.fastmcp import FastMCP
-from src.tools.problems import get_polygon_problems
 from typing import List, Optional
-from src.polygon.models import Problem
+from ..polygon.client import PolygonClient
+from ..polygon.models import Problem
 
-# Create an MCP server
-mcp = FastMCP("CF-Polygon-MCP")
-
-
-# Add an addition tool
-@mcp.tool()
-def get_problems(
+def get_polygon_problems(
     api_key: str,
     api_secret: str,
     show_deleted: Optional[bool] = None,
@@ -18,7 +11,7 @@ def get_problems(
     owner: Optional[str] = None
 ) -> List[Problem]:
     """
-    获取Polygon中用户的题目列表
+    获取Polygon中的题目列表
     
     Args:
         api_key: Polygon API密钥
@@ -31,15 +24,10 @@ def get_problems(
     Returns:
         List[Problem]: 题目列表
     """
-    return get_polygon_problems(
-        api_key=api_key,
-        api_secret=api_secret,
+    client = PolygonClient(api_key, api_secret)
+    return client.get_problems(
         show_deleted=show_deleted,
         problem_id=problem_id,
         name=name,
         owner=owner
     )
-
-
-if __name__ == "__main__":
-    mcp.run()
