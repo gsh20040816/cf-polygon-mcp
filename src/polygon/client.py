@@ -1,5 +1,5 @@
 import requests
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Union
 from .models import Problem, ProblemInfo
 from .problem import ProblemSession
 import time
@@ -41,8 +41,24 @@ class PolygonClient:
         
         return f"{rand}{sha}"
         
-    def _make_request(self, method: str, params: Optional[Dict] = None) -> Dict:
-        """发送请求到Polygon API"""
+    def _make_request(
+        self,
+        method: str,
+        params: Optional[Dict] = None,
+        raw_response: bool = False
+    ) -> Union[Dict, bytes]:
+        """
+        发送请求到Polygon API
+        
+        Args:
+            method: API方法名
+            params: 请求参数
+            raw_response: 是否返回原始响应内容
+            
+        Returns:
+            Union[Dict, bytes]: 如果raw_response为True，返回原始响应内容；
+                               否则返回解析后的JSON数据
+        """
         if params is None:
             params = {}
             
@@ -59,6 +75,10 @@ class PolygonClient:
         response = requests.get(f"{self.base_url}{method}", params=params)
         response.raise_for_status()
         
+        # 根据需要返回原始内容或解析的JSON
+        if raw_response:
+            return response.content
+            
         # 解析响应
         data = response.json()
         if data.get("status") != "OK":

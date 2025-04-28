@@ -1,5 +1,8 @@
-from typing import Optional, Dict
-from .models import ProblemInfo, AccessType, AccessDeniedException, Statement, LanguageMap
+from typing import Optional, Dict, Union
+from .models import (
+    ProblemInfo, AccessType, AccessDeniedException,
+    Statement, LanguageMap, FileType
+)
 
 class ProblemSession:
     """处理特定题目的会话类"""
@@ -28,16 +31,22 @@ class ProblemSession:
         if self._access_type == AccessType.READ:
             raise AccessDeniedException("需要WRITE或OWNER权限才能执行此操作")
     
-    def _make_problem_request(self, method: str, params: Optional[Dict] = None) -> Dict:
+    def _make_problem_request(
+        self,
+        method: str,
+        params: Optional[Dict] = None,
+        raw_response: bool = False
+    ) -> Union[Dict, bytes]:
         """
         发送题目相关的API请求
         
         Args:
             method: API方法名
             params: 请求参数
+            raw_response: 是否返回原始响应内容
             
         Returns:
-            Dict: API响应数据
+            Union[Dict, bytes]: API响应数据或原始内容
         """
         if params is None:
             params = {}
@@ -47,7 +56,7 @@ class ProblemSession:
         if self.pin is not None:
             params["pin"] = self.pin
             
-        return self.client._make_request(method, params)
+        return self.client._make_request(method, params, raw_response)
     
     def get_info(self) -> ProblemInfo:
         """
@@ -158,4 +167,30 @@ class ProblemSession:
             >>>     print("Not an interactive problem")
         """
         response = self._make_problem_request("problem.interactor")
-        return response["result"] 
+        return response["result"]
+        
+    def view_file(self, file_type: FileType, name: str) -> bytes:
+        """
+        获取文件内容
+        
+        Args:
+            file_type: 文件类型（resource/source/aux）
+            name: 文件名
+            
+        Returns:
+            bytes: 文件内容的原始数据
+            
+        Example:
+            >>> # 查看checker源代码
+            >>> content = problem.view_file(FileType.SOURCE, "checker.cpp")
+            >>> print(content.decode('utf-8'))
+            >>> 
+            >>> # 查看资源文件
+            >>> content = problem.view_file(FileType.RESOURCE, "testlib.h")
+            >>> print(content.decode('utf-8'))
+        """
+        params = {
+            "type": file_type.value,
+            "name": name
+        }
+        return self._make_problem_request("problem.viewFile", params, raw_response=True) 

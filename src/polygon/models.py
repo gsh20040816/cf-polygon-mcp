@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional, Dict, TypeVar, Generic
+from typing import Optional, Dict, TypeVar, Generic, Union
 from enum import Enum
 from datetime import datetime
 
@@ -8,6 +8,12 @@ class AccessType(str, Enum):
     READ = "READ"
     WRITE = "WRITE"
     OWNER = "OWNER"
+
+class FileType(str, Enum):
+    """文件类型"""
+    RESOURCE = "resource"  # 资源文件
+    SOURCE = "source"     # 源代码文件
+    AUX = "aux"          # 辅助文件
 
 class SourceType(str, Enum):
     """源文件类型"""
