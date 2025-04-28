@@ -2,6 +2,7 @@ import requests
 from typing import List, Dict, Optional, Union
 from .models import Problem, ProblemInfo
 from .problem import ProblemSession
+from .contest import ContestSession
 import time
 import random
 import hashlib
@@ -147,3 +148,22 @@ class PolygonClient:
             ProblemSession: 题目会话对象
         """
         return ProblemSession(self, problem_id, pin)
+        
+    def create_contest_session(self, contest_id: int, pin: Optional[str] = None) -> ContestSession:
+        """
+        创建一个比赛会话，用于执行比赛相关的操作
+        
+        Args:
+            contest_id: 比赛ID
+            pin: 比赛的PIN码（如果有）
+            
+        Returns:
+            ContestSession: 比赛会话对象
+            
+        Example:
+            >>> contest = client.create_contest_session(12345)
+            >>> problems = contest.get_problems()
+            >>> for problem in problems:
+            >>>     print(f"Problem: {problem.name}")
+        """
+        return ContestSession(self, contest_id, pin)

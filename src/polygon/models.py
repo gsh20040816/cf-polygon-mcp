@@ -263,6 +263,7 @@ class Problem(BaseModel):
         revision: 当前题目版本号
         latestPackage: 最新的可用包版本号
         modified: 题目是否被修改
+        contestLetter: 题目在比赛中的编号（A, B, C...），可选
     """
     id: int
     owner: str
@@ -273,21 +274,70 @@ class Problem(BaseModel):
     revision: Optional[int] = None
     latestPackage: Optional[int] = None
     modified: bool = False
+    contestLetter: Optional[str] = None  # 题目在比赛中的编号
     
     @classmethod
     def from_dict(cls, data: dict) -> "Problem":
-        """从API响应数据创建Problem实例"""
-        return cls(
-            id=data["id"],
-            name=data["name"],
-            owner=data["owner"],
-            deleted=data.get("deleted", False),
-            favourite=data.get("favourite", False),
-            accessType=AccessType(data["accessType"]),
-            revision=data.get("revision"),
-            latestPackage=data.get("latestPackage"),
-            modified=data.get("modified", False)
-        )
+        """
+        从API响应数据创建Problem实例
+        
+        Args:
+            data: API返回的题目数据字典
+            
+        Returns:
+            Problem: 题目对象
+            
+        Raises:
+            ValueError: 当必需的字段缺失或格式不正确时
+        """
+        try:
+            # 确保必需的字段存在
+            required_fields = ["id", "name", "owner"]
+            missing_fields = [field for field in required_fields if field not in data]
+            if missing_fields:
+                print(f"Warning: Missing required fields: {', '.join(missing_fields)}")
+                print(f"Available fields: {', '.join(data.keys())}")
+                raise ValueError(f"Missing required fields: {', '.join(missing_fields)}")
+            
+            # 转换数据类型
+            problem_data = {
+                "id": int(data["id"]),
+                "name": str(data["name"]),
+                "owner": str(data["owner"]),
+                "deleted": bool(data.get("deleted", False)),
+                "favourite": bool(data.get("favourite", False)),
+                "modified": bool(data.get("modified", False))
+            }
+            
+            # 处理访问权限类型，使用默认值READ如果不存在
+            access_type = data.get("accessType", "READ")
+            try:
+                problem_data["accessType"] = AccessType(access_type)
+            except ValueError:
+                print(f"Warning: Invalid accessType '{access_type}', defaulting to READ")
+                problem_data["accessType"] = AccessType.READ
+            
+            # 处理可选字段
+            if "revision" in data:
+                problem_data["revision"] = int(data["revision"])
+            if "latestPackage" in data:
+                problem_data["latestPackage"] = int(data["latestPackage"])
+            if "contestLetter" in data:
+                problem_data["contestLetter"] = str(data["contestLetter"])
+                
+            return cls(**problem_data)
+            
+        except Exception as e:
+            print(f"Error in Problem.from_dict: {str(e)}")
+            # 打印数据以便于调试
+            print(f"Problematic data: {data}")
+            raise ValueError(f"Failed to create Problem object: {str(e)}")
+            
+    def __str__(self) -> str:
+        """返回题目的字符串表示"""
+        if self.contestLetter:
+            return f"Problem {self.contestLetter}: {self.name} (ID: {self.id})"
+        return f"Problem: {self.name} (ID: {self.id})"
 
 class Statement(BaseModel):
     """
