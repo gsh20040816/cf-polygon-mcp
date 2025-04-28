@@ -1,12 +1,24 @@
 # CF-Polygon-MCP
 
-基于 MCP (Model API Control Protocol) 的 Codeforces Polygon API 工具集。提供了一系列便捷的工具函数来操作和管理 Polygon 平台上的题目。
+基于 MCP (Model API Control Protocol) 的 Codeforces Polygon API 工具集。提供一系列便捷工具函数，用于操作和管理 Polygon 平台上的算法竞赛题目。
 
 ## 功能特性
 
-- 获取题目列表，支持多种筛选条件
-- 获取题目详细信息（时限、内存限制等）
-- 使用环境变量管理 API 密钥，安全可靠
+- **题目管理**
+  - 获取题目列表，支持多种筛选条件（题目ID、名称、所有者等）
+  - 查看题目是否已删除、是否在收藏夹中
+  - 检查用户对题目的访问权限类型（READ/WRITE/OWNER）
+
+- **题目详情**
+  - 获取题目的详细配置信息
+  - 查看时间限制、内存限制
+  - 确认题目是否为交互式题目
+  - 获取输入输出文件名设置
+
+- **版本控制**
+  - 查看当前题目版本号
+  - 获取最新可用包版本号
+  - 检查题目是否被修改
 
 ## 安装
 
@@ -24,9 +36,9 @@ uv sync
 
 ## 配置
 
-在使用之前，你需要设置 Polygon API 密钥。你可以在 [Polygon 设置页面](https://polygon.codeforces.com/settings) 获取 API Key 和 Secret。
+在使用前，需要设置 Polygon API 密钥。可在 [Polygon 设置页面](https://polygon.codeforces.com/settings) 获取 API Key 和 Secret。
 
-将以下环境变量添加到你的 shell 配置文件（如 `~/.bashrc` 或 `~/.zshrc`）中：
+将环境变量添加到你的 shell 配置文件（如 `~/.bashrc` 或 `~/.zshrc`）中：
 
 ```bash
 export POLYGON_API_KEY=your_key
@@ -35,61 +47,78 @@ export POLYGON_API_SECRET=your_secret
 
 ## 使用方法
 
-### 启动服务
+### 启动 MCP 服务
 
 ```bash
 uv run main.py
 ```
 
-### 获取题目列表
+### API 功能示例
 
-支持以下筛选条件：
-- `show_deleted`: 是否显示已删除的题目
-- `problem_id`: 按题目ID筛选
-- `name`: 按题目名称筛选
-- `owner`: 按题目所有者筛选
+#### 获取题目列表
 
-示例：
 ```python
-problems = get_problems(
-    show_deleted=False,
-    name="Two Sum",
-    owner="tourist"
-)
+# 获取所有非删除的题目
+problems = get_problems(show_deleted=False)
+
+# 按名称筛选题目
+problems = get_problems(name="Two Sum")
+
+# 按所有者筛选题目
+problems = get_problems(owner="tourist")
+
+# 按ID查找特定题目
+problems = get_problems(problem_id=1234)
 ```
 
-返回的题目信息包含：
-- `id`: 题目ID
-- `owner`: 题目所有者的handle
-- `name`: 题目名称
-- `deleted`: 题目是否已删除
-- `favourite`: 题目是否在用户的收藏夹中
-- `accessType`: 用户对此题目的访问权限类型（READ/WRITE/OWNER）
-- `revision`: 当前题目版本号
-- `latestPackage`: 最新的可用包版本号
-- `modified`: 题目是否被修改
+返回数据格式：
+```python
+[
+  {
+    "id": 123,
+    "owner": "user_handle",
+    "name": "题目名称",
+    "deleted": false,
+    "favourite": true,
+    "accessType": "WRITE",
+    "revision": 42,
+    "latestPackage": 7,
+    "modified": true
+  },
+  # 更多题目...
+]
+```
 
-### 获取题目详细信息
-
-通过题目ID获取题目的详细配置信息：
+#### 获取题目详细信息
 
 ```python
+# 获取指定题目ID的详细信息
 info = get_problem_info(problem_id=1234)
 ```
 
-返回的信息包含：
-- `inputFile`: 题目的输入文件名
-- `outputFile`: 题目的输出文件名
-- `interactive`: 是否为交互题
-- `timeLimit`: 时间限制（毫秒）
-- `memoryLimit`: 内存限制（MB）
+返回数据示例：
+```python
+{
+  "inputFile": "input.txt",
+  "outputFile": "output.txt",
+  "interactive": false,
+  "timeLimit": 1000,   # 毫秒
+  "memoryLimit": 256    # MB
+}
+```
 
-## 开发
+## 技术细节
 
-项目使用 pyproject.toml 管理依赖。主要依赖：
-- mcp[cli] >= 1.6.0
-- requests >= 2.32.3
+- 基于 MCP 协议构建，提供标准化的 API 交互
+- 使用环境变量安全管理 API 密钥
+- 项目依赖：
+  - mcp[cli] >= 1.6.0
+  - requests >= 2.32.3
 
 ## 许可证
 
 [AGPL-3.0-or-later](LICENSE)
+
+## 说明
+
+本项目由 AI 生成。
