@@ -15,7 +15,7 @@ def update_problem_info(
     time_limit: Optional[int] = None,
     memory_limit: Optional[int] = None,
     interactive: Optional[bool] = None
-) -> ProblemInfo:
+) -> dict:
     """
     更新题目信息
     
@@ -54,4 +54,4 @@ def update_problem_info(
         api_key, api_secret, base_url,
         "problem.updateInfo", problem_id, pin, params
     )
-    return ProblemInfo.from_dict(response["result"]) 
+    return response 

@@ -9,6 +9,7 @@ from src.mcp.utils.problem_file import view_problem_file
 from src.mcp.utils.problem_solutions import get_problem_solutions
 from src.mcp.utils.problem_solution_view import view_problem_solution
 from src.mcp.utils.contest_problems import get_contest_problems
+from src.mcp.utils.problem_update_info import update_problem_info
 
 # 创建MCP服务器
 mcp = FastMCP("CF-Polygon-MCP")
@@ -24,6 +25,7 @@ mcp.tool()(view_problem_file)
 mcp.tool()(get_problem_solutions)
 mcp.tool()(view_problem_solution)
 mcp.tool()(get_contest_problems)
+mcp.tool()(update_problem_info)
 
 # 提供对外导出的接口
 def get_mcp():

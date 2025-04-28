@@ -59,7 +59,7 @@ class ProblemSession:
                    output_file: Optional[str] = None,
                    time_limit: Optional[int] = None,
                    memory_limit: Optional[int] = None,
-                   interactive: Optional[bool] = None) -> ProblemInfo:
+                   interactive: Optional[bool] = None) -> dict:
         """
         更新题目信息
         
