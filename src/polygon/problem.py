@@ -3,6 +3,15 @@ from .models import (
     ProblemInfo, AccessType, AccessDeniedException,
     Statement, LanguageMap, FileType, Solution
 )
+from .api.problem_info import get_problem_info
+from .api.problem_update_info import update_problem_info
+from .api.problem_statements import get_problem_statements
+from .api.problem_checker import get_problem_checker
+from .api.problem_validator import get_problem_validator
+from .api.problem_interactor import get_problem_interactor
+from .api.problem_view_file import view_problem_file
+from .api.problem_solutions import get_problem_solutions
+from .api.problem_view_solution import view_problem_solution
 
 class ProblemSession:
     """处理特定题目的会话类"""
@@ -28,35 +37,8 @@ class ProblemSession:
             problem = self.client.get_problems(problem_id=self.problem_id)[0]
             self._access_type = problem.accessType
             
-        if self._access_type == AccessType.READ:
-            raise AccessDeniedException("需要WRITE或OWNER权限才能执行此操作")
-    
-    def _make_problem_request(
-        self,
-        method: str,
-        params: Optional[Dict] = None,
-        raw_response: bool = False
-    ) -> Union[Dict, bytes]:
-        """
-        发送题目相关的API请求
-        
-        Args:
-            method: API方法名
-            params: 请求参数
-            raw_response: 是否返回原始响应内容
-            
-        Returns:
-            Union[Dict, bytes]: API响应数据或原始内容
-        """
-        if params is None:
-            params = {}
-            
-        # 添加题目ID和PIN码（如果有）
-        params["problemId"] = str(self.problem_id)
-        if self.pin is not None:
-            params["pin"] = self.pin
-            
-        return self.client._make_request(method, params, raw_response)
+        from .utils.problem_utils import check_write_access
+        check_write_access(self._access_type)
     
     def get_info(self) -> ProblemInfo:
         """
@@ -65,8 +47,12 @@ class ProblemSession:
         Returns:
             ProblemInfo: 题目的基本信息
         """
-        response = self._make_problem_request("problem.info")
-        return ProblemInfo.from_dict(response["result"])
+        return get_problem_info(
+            self.client.api_key, 
+            self.client.api_secret, 
+            self.client.base_url, 
+            self.problem_id
+        )
     
     def update_info(self, 
                    input_file: Optional[str] = None,
@@ -87,22 +73,24 @@ class ProblemSession:
         Returns:
             ProblemInfo: 更新后的题目信息
         """
-        self._check_write_access()
-        
-        params = {}
-        if input_file is not None:
-            params["inputFile"] = input_file
-        if output_file is not None:
-            params["outputFile"] = output_file
-        if time_limit is not None:
-            params["timeLimit"] = str(time_limit)
-        if memory_limit is not None:
-            params["memoryLimit"] = str(memory_limit)
-        if interactive is not None:
-            params["interactive"] = "true" if interactive else "false"
+        if self._access_type is None:
+            # 获取题目信息以检查访问权限
+            problem = self.client.get_problems(problem_id=self.problem_id)[0]
+            self._access_type = problem.accessType
             
-        response = self._make_problem_request("problem.updateInfo", params)
-        return ProblemInfo.from_dict(response["result"])
+        return update_problem_info(
+            self.client.api_key,
+            self.client.api_secret,
+            self.client.base_url,
+            self.problem_id,
+            self.pin,
+            self._access_type,
+            input_file,
+            output_file,
+            time_limit,
+            memory_limit,
+            interactive
+        )
         
     def get_statements(self) -> LanguageMap[Statement]:
         """
@@ -121,8 +109,13 @@ class ProblemSession:
             >>> # 获取所有可用语言
             >>> print(f"Available languages: {list(statements.keys())}")
         """
-        response = self._make_problem_request("problem.statements")
-        return LanguageMap.from_dict(response["result"], Statement)
+        return get_problem_statements(
+            self.client.api_key,
+            self.client.api_secret,
+            self.client.base_url,
+            self.problem_id,
+            self.pin
+        )
         
     def get_checker(self) -> str:
         """
@@ -135,8 +128,13 @@ class ProblemSession:
             >>> checker_name = problem.get_checker()
             >>> print(f"Current checker: {checker_name}")
         """
-        response = self._make_problem_request("problem.checker")
-        return response["result"]
+        return get_problem_checker(
+            self.client.api_key,
+            self.client.api_secret,
+            self.client.base_url,
+            self.problem_id,
+            self.pin
+        )
         
     def get_validator(self) -> str:
         """
@@ -149,8 +147,13 @@ class ProblemSession:
             >>> validator_name = problem.get_validator()
             >>> print(f"Current validator: {validator_name}")
         """
-        response = self._make_problem_request("problem.validator")
-        return response["result"]
+        return get_problem_validator(
+            self.client.api_key,
+            self.client.api_secret,
+            self.client.base_url,
+            self.problem_id,
+            self.pin
+        )
         
     def get_interactor(self) -> str:
         """
@@ -166,8 +169,13 @@ class ProblemSession:
             >>> else:
             >>>     print("Not an interactive problem")
         """
-        response = self._make_problem_request("problem.interactor")
-        return response["result"]
+        return get_problem_interactor(
+            self.client.api_key,
+            self.client.api_secret,
+            self.client.base_url,
+            self.problem_id,
+            self.pin
+        )
         
     def view_file(self, file_type: FileType, name: str) -> bytes:
         """
@@ -189,11 +197,15 @@ class ProblemSession:
             >>> content = problem.view_file(FileType.RESOURCE, "testlib.h")
             >>> print(content.decode('utf-8'))
         """
-        params = {
-            "type": file_type.value,
-            "name": name
-        }
-        return self._make_problem_request("problem.viewFile", params, raw_response=True)
+        return view_problem_file(
+            self.client.api_key,
+            self.client.api_secret,
+            self.client.base_url,
+            self.problem_id,
+            file_type,
+            name,
+            self.pin
+        )
         
     def get_solutions(self) -> List[Solution]:
         """
@@ -214,8 +226,13 @@ class ProblemSession:
             >>>     if solution.is_correct():
             >>>         print("This is a correct solution")
         """
-        response = self._make_problem_request("problem.solutions")
-        return [Solution.from_dict(sol) for sol in response["result"]]
+        return get_problem_solutions(
+            self.client.api_key,
+            self.client.api_secret,
+            self.client.base_url,
+            self.problem_id,
+            self.pin
+        )
         
     def view_solution(self, name: str) -> bytes:
         """
@@ -236,7 +253,11 @@ class ProblemSession:
             >>> content = problem.view_solution("wrong_answer.py")
             >>> print(content.decode('utf-8'))
         """
-        params = {
-            "name": name
-        }
-        return self._make_problem_request("problem.viewSolution", params, raw_response=True) 
+        return view_problem_solution(
+            self.client.api_key,
+            self.client.api_secret,
+            self.client.base_url,
+            self.problem_id,
+            name,
+            self.pin
+        ) 

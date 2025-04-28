@@ -23,4 +23,5 @@ def get_problem_info(problem_id: int) -> ProblemInfo:
     api_key, api_secret = get_api_credentials()
     
     client = PolygonClient(api_key, api_secret)
-    return client.get_problem_info(problem_id) 
+    session = client.create_problem_session(problem_id)
+    return session.get_info() 
