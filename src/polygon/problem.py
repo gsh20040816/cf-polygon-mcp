@@ -12,6 +12,9 @@ from .api.problem_interactor import get_problem_interactor
 from .api.problem_view_file import view_problem_file
 from .api.problem_solutions import get_problem_solutions
 from .api.problem_view_solution import view_problem_solution
+from .api.problem_update_working_copy import update_problem_working_copy
+from .api.problem_discard_working_copy import discard_problem_working_copy
+from .api.problem_save_statement import save_problem_statement
 
 class ProblemSession:
     """处理特定题目的会话类"""
@@ -260,4 +263,140 @@ class ProblemSession:
             self.problem_id,
             name,
             self.pin
-        ) 
+        )
+        
+    def update_working_copy(self) -> dict:
+        """
+        更新工作副本
+        
+        将该题目的最新提交版本作为工作副本，用于后续修改
+        
+        Returns:
+            dict: API响应
+            
+        Example:
+            >>> result = problem.update_working_copy()
+            >>> if "ok" in result:
+            >>>     print("工作副本已更新")
+        """
+        if self._access_type is None:
+            # 获取题目信息以检查访问权限
+            problem = self.client.get_problems(problem_id=self.problem_id)[0]
+            self._access_type = problem.accessType
+            
+        return update_problem_working_copy(
+            self.client.api_key,
+            self.client.api_secret,
+            self.client.base_url,
+            self.problem_id,
+            self.pin,
+            self._access_type
+        )
+        
+    def discard_working_copy(self) -> dict:
+        """
+        丢弃工作副本
+        
+        丢弃对该题目的所有未提交修改
+        
+        Returns:
+            dict: API响应
+            
+        Example:
+            >>> result = problem.discard_working_copy()
+            >>> if "ok" in result:
+            >>>     print("工作副本已丢弃")
+        """
+        if self._access_type is None:
+            # 获取题目信息以检查访问权限
+            problem = self.client.get_problems(problem_id=self.problem_id)[0]
+            self._access_type = problem.accessType
+            
+        return discard_problem_working_copy(
+            self.client.api_key,
+            self.client.api_secret,
+            self.client.base_url,
+            self.problem_id,
+            self.pin,
+            self._access_type
+        )
+        
+    def save_statement(self, 
+                      lang: str, 
+                      encoding: str = "utf-8",
+                      name: Optional[str] = None,
+                      legend: Optional[str] = None,
+                      input: Optional[str] = None,
+                      output: Optional[str] = None,
+                      scoring: Optional[str] = None,
+                      interaction: Optional[str] = None,
+                      notes: Optional[str] = None,
+                      tutorial: Optional[str] = None) -> dict:
+        """
+        更新或创建题目的陈述
+        
+        Args:
+            lang: 陈述的语言 (必需)
+            encoding: 陈述的编码格式（默认utf-8）
+            name: 题目的名称
+            legend: 题目的描述
+            input: 题目的输入格式说明
+            output: 题目的输出格式说明
+            scoring: 题目的评分说明
+            interaction: 题目的交互协议说明（仅用于交互题）
+            notes: 题目注释
+            tutorial: 题目教程/题解
+            
+        Returns:
+            dict: API响应
+            
+        Raises:
+            AccessDeniedException: 当没有足够的访问权限时抛出
+            
+        Example:
+            >>> # 添加或更新英文题目描述
+            >>> result = problem.save_statement(
+            >>>     lang="english",
+            >>>     name="Binary Search",
+            >>>     legend="Implement a binary search algorithm...",
+            >>>     input="The first line contains an integer n...",
+            >>>     output="For each query, output the index..."
+            >>> )
+            >>> # 添加或更新中文题目描述
+            >>> result = problem.save_statement(
+            >>>     lang="chinese",
+            >>>     name="二分查找",
+            >>>     legend="实现一个二分查找算法...",
+            >>>     input="第一行包含一个整数n...",
+            >>>     output="对于每个查询，输出索引..."
+            >>> )
+        """
+        if self._access_type is None:
+            # 获取题目信息以检查访问权限
+            problem = self.client.get_problems(problem_id=self.problem_id)[0]
+            self._access_type = problem.accessType
+            
+        response = save_problem_statement(
+            self.client.api_key,
+            self.client.api_secret,
+            self.client.base_url,
+            self.problem_id,
+            lang,
+            self._access_type,
+            self.pin,
+            encoding,
+            name,
+            legend,
+            input,
+            output,
+            scoring,
+            interaction,
+            notes,
+            tutorial
+        )
+        
+        # 确保返回dict类型
+        if not isinstance(response, dict):
+            return {"result": response}
+            
+        return response 

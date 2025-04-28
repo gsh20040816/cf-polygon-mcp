@@ -41,7 +41,7 @@ def update_problem_info(
         interactive=interactive
     )
     
-    if "ok" in result:
+    if result.get("status") == "OK":
         return {
             "status": "success",
             "message": "题目信息更新成功",
