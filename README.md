@@ -27,6 +27,24 @@
 
 在使用前，需要设置 Polygon API 密钥。可在 [Polygon 设置页面](https://polygon.codeforces.com/settings) 获取 API Key 和 Secret。
 
+## 开发
+
+1. 确保你已经安装了 Python 3.13 及以上版本。
+2. 克隆项目：
+```bash
+git clone https://github.com/gsh20040816/cf-polygon-mcp.git
+cd cf-polygon-mcp
+```
+
+3. 安装依赖：
+```bash
+uv sync
+```
+
+4. 运行项目：
+```bash
+uv run mcp dev main.py
+```
 ## 许可证
 
 [AGPL-3.0-or-later](LICENSE)
