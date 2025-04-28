@@ -1,5 +1,4 @@
 from mcp.server.fastmcp import FastMCP
-from src.tools.problems import get_polygon_problems, get_polygon_problem_info
 from typing import List, Optional, Dict
 from src.polygon.models import Problem, ProblemInfo, Statement, LanguageMap, FileType, Solution
 from src.polygon.client import PolygonClient
@@ -47,9 +46,8 @@ def get_problems(
     """
     api_key, api_secret = _get_api_credentials()
     
-    return get_polygon_problems(
-        api_key=api_key,
-        api_secret=api_secret,
+    client = PolygonClient(api_key, api_secret)
+    return client.get_problems(
         show_deleted=show_deleted,
         problem_id=problem_id,
         name=name,
@@ -77,11 +75,8 @@ def get_problem_info(problem_id: int) -> ProblemInfo:
     """
     api_key, api_secret = _get_api_credentials()
     
-    return get_polygon_problem_info(
-        api_key=api_key,
-        api_secret=api_secret,
-        problem_id=problem_id
-    )
+    client = PolygonClient(api_key, api_secret)
+    return client.get_problem_info(problem_id)
 
 @mcp.tool()
 def get_problem_statements(problem_id: int, pin: Optional[str] = None) -> Dict[str, Statement]:

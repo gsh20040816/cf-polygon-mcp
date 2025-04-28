@@ -14,7 +14,7 @@ cf-polygon-mcp = "main:serve_cli"
 
 [tool.setuptools]
 py-modules = ["main"]
-packages = ["src", "src.polygon", "src.tools"]
+packages = ["src", "src.polygon"]
 
 [build-system]
 requires = ["setuptools>=42", "wheel"]
