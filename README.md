@@ -1,35 +1,28 @@
 # CF-Polygon-MCP
 
-基于 MCP (Model API Control Protocol) 的 Codeforces Polygon API 工具集。提供一系列便捷工具函数，用于操作和管理 Polygon 平台上的算法竞赛题目。
+基于 Codeforces Polygon API 的 MCP 工具集，提供一系列工具函数用于管理 Polygon 平台上的题目。
 
 ## 功能特性
 
-- **题目管理**
-  - 获取题目列表，支持多种筛选条件（题目ID、名称、所有者等）
-  - 查看题目是否已删除、是否在收藏夹中
-  - 检查用户对题目的访问权限类型（READ/WRITE/OWNER）
-
-- **题目详情**
-  - 获取题目的详细配置信息
-  - 查看时间限制、内存限制
-  - 确认题目是否为交互式题目
-  - 获取输入输出文件名设置
-
-- **版本控制**
-  - 查看当前题目版本号
-  - 获取最新可用包版本号
-  - 检查题目是否被修改
+- 获取题目列表，支持多种筛选条件
+- 获取题目详细信息（时限、内存限制等）
+- 获取题目描述、题解、输入输出格式等
+- 获取题目解决方案
+- 获取题目验证器、检查器、交互器等
+- 获取比赛题目列表
 
 ## 安装
 
-1. 确保你的 Python 版本 >= 3.13
-2. 克隆仓库：
+1. 确保你已经安装了 Python 3.13 及以上版本。
+2. 克隆本项目：
+
 ```bash
 git clone https://github.com/gsh20040816/cf-polygon-mcp.git
 cd cf-polygon-mcp
 ```
 
 3. 安装依赖：
+
 ```bash
 uv sync
 ```
@@ -47,19 +40,9 @@ export POLYGON_API_SECRET=your_secret
 
 ## 使用方法
 
-### 启动 MCP 服务
-
 ```bash
 uv run main.py
 ```
-
-## 技术细节
-
-- 基于 MCP 协议构建，提供标准化的 API 交互
-- 使用环境变量安全管理 API 密钥
-- 项目依赖：
-  - mcp[cli] >= 1.6.0
-  - requests >= 2.32.3
 
 ## 许可证
 
