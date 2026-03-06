@@ -10,7 +10,8 @@ def make_problem_request(
     problem_id: int,
     pin: Optional[str] = None,
     params: Optional[Dict] = None,
-    raw_response: bool = False
+    raw_response: bool = False,
+    http_method: str = "GET",
 ):
     """
     发送题目相关的API请求
@@ -42,7 +43,8 @@ def make_problem_request(
         base_url, 
         method, 
         params, 
-        raw_response
+        raw_response,
+        http_method
     )
 
 def check_write_access(access_type: AccessType):

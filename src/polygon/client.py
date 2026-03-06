@@ -1,7 +1,9 @@
-from typing import List, Dict, Optional, Union
-from .models import Problem, ProblemInfo
+from typing import List, Optional
+
+from .models import Problem
 from .problem import ProblemSession
 from .contest import ContestSession
+from .api.problem_create import create_problem
 
 class PolygonClient:
     def __init__(self, api_key: str, api_secret: str):
@@ -9,11 +11,13 @@ class PolygonClient:
         self.api_secret = api_secret
         self.base_url = "https://polygon.codeforces.com/api/"
         
-    def get_problems(self, 
-                    show_deleted: Optional[bool] = None,
-                    problem_id: Optional[int] = None,
-                    name: Optional[str] = None,
-                    owner: Optional[str] = None) -> List[Problem]:
+    def get_problems(
+        self,
+        show_deleted: Optional[bool] = None,
+        problem_id: Optional[int] = None,
+        name: Optional[str] = None,
+        owner: Optional[str] = None,
+    ) -> List[Problem]:
         """
         获取用户可访问的题目列表
         
@@ -28,16 +32,27 @@ class PolygonClient:
         """
         from .api.problems import get_problems
         return get_problems(
-            self.api_key, 
-            self.api_secret, 
-            self.base_url, 
-            show_deleted, 
-            problem_id, 
-            name, 
-            owner
+            self.api_key,
+            self.api_secret,
+            self.base_url,
+            show_deleted,
+            problem_id,
+            name,
+            owner,
         )
 
-        
+    def create_problem(self, name: str) -> Problem:
+        """
+        创建一个新的空题目。
+
+        Args:
+            name: 题目名称
+
+        Returns:
+            Problem: 新创建的题目对象
+        """
+        return create_problem(self.api_key, self.api_secret, self.base_url, name)
+
     def create_problem_session(self, problem_id: int, pin: Optional[str] = None) -> ProblemSession:
         """
         创建一个题目会话，用于执行题目相关的操作

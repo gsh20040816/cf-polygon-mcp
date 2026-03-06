@@ -1,11 +1,12 @@
 from src.polygon.models import ProblemInfo
-from src.polygon.utils.client_utils import make_api_request
+from src.polygon.utils.problem_utils import make_problem_request
 
 def get_problem_info(
     api_key: str,
     api_secret: str,
     base_url: str,
-    problem_id: int
+    problem_id: int,
+    pin: str | None = None,
 ) -> ProblemInfo:
     """
     获取题目的基本信息
@@ -19,9 +20,12 @@ def get_problem_info(
     Returns:
         ProblemInfo: 题目的基本信息
     """
-    params = {
-        "problemId": str(problem_id)
-    }
-    
-    response = make_api_request(api_key, api_secret, base_url, "problem.info", params)
-    return ProblemInfo.from_dict(response["result"]) 
+    response = make_problem_request(
+        api_key,
+        api_secret,
+        base_url,
+        "problem.info",
+        problem_id,
+        pin,
+    )
+    return ProblemInfo.from_dict(response["result"])

@@ -19,7 +19,7 @@ def generate_api_signature(api_secret: str, method_name: str, params: Dict) -> s
     rand = str(random.randint(100000, 999999))
     
     # 按key升序排序参数
-    sorted_params = sorted(params.items(), key=lambda x: x[0])
+    sorted_params = sorted(params.items(), key=lambda item: (item[0], str(item[1])))
     param_str = "&".join(f"{k}={v}" for k, v in sorted_params)
     
     # 构建签名字符串
@@ -39,7 +39,8 @@ def make_api_request(
     base_url: str,
     method: str,
     params: Optional[Dict] = None,
-    raw_response: bool = False
+    raw_response: bool = False,
+    http_method: str = "GET",
 ) -> Union[Dict, bytes]:
     """
     发送请求到Polygon API
@@ -69,7 +70,14 @@ def make_api_request(
     params["apiSig"] = generate_api_signature(api_secret, method, params)
     
     # 发送请求
-    response = requests.get(f"{base_url}{method}", params=params)
+    request_method = http_method.upper()
+    request_kwargs = {"timeout": 30}
+    if request_method == "GET":
+        request_kwargs["params"] = params
+    else:
+        request_kwargs["data"] = params
+
+    response = requests.request(request_method, f"{base_url}{method}", **request_kwargs)
     response.raise_for_status()
     
     # 根据需要返回原始内容或解析的JSON
