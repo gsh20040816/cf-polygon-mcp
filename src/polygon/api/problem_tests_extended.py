@@ -312,6 +312,7 @@ def set_problem_test_group(
         problem_id,
         pin,
         params,
+        http_method="POST",
     )
     return _unwrap_result(response)
 
@@ -339,6 +340,7 @@ def enable_problem_groups(
             "testset": testset,
             "enable": _bool_to_api(enable),
         },
+        http_method="POST",
     )
     return _unwrap_result(response)
 
@@ -362,6 +364,7 @@ def enable_problem_points(
         problem_id,
         pin,
         {"enable": _bool_to_api(enable)},
+        http_method="POST",
     )
     return _unwrap_result(response)
 

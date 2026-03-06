@@ -7,6 +7,11 @@ from src.polygon.api.problem_extra_validators import get_problem_extra_validator
 from src.polygon.api.problem_packages import build_problem_package, commit_problem_changes
 from src.polygon.api.problem_save_statement import save_problem_statement
 from src.polygon.api.problem_sources import save_problem_solution
+from src.polygon.api.problem_tests_extended import (
+    enable_problem_groups,
+    enable_problem_points,
+    set_problem_test_group,
+)
 from src.polygon.api.problem_discard_working_copy import discard_problem_working_copy
 from src.polygon.api.problem_update_info import update_problem_info
 from src.polygon.api.problem_update_working_copy import update_problem_working_copy
@@ -233,6 +238,69 @@ class PolygonApiExtensionsTest(unittest.TestCase):
         self.assertEqual(args[6]["remove"], "false")
         self.assertEqual(args[6]["testset"], "tests")
         self.assertEqual(args[6]["tag"], "WA")
+        self.assertEqual(kwargs["http_method"], "POST")
+
+    @patch(
+        "src.polygon.api.problem_tests_extended.make_problem_request",
+        return_value={"status": "OK", "result": {"grouped": True}},
+    )
+    def test_set_problem_test_group_uses_post(self, request_mock):
+        result = set_problem_test_group(
+            "key",
+            "secret",
+            "https://polygon.codeforces.com/api/",
+            1,
+            AccessType.OWNER,
+            testset="tests",
+            test_group="samples",
+            test_indices=[1, 2],
+        )
+
+        self.assertEqual(result, {"grouped": True})
+        args, kwargs = request_mock.call_args
+        self.assertEqual(args[3], "problem.setTestGroup")
+        self.assertEqual(args[6]["testIndices"], "1,2")
+        self.assertEqual(kwargs["http_method"], "POST")
+
+    @patch(
+        "src.polygon.api.problem_tests_extended.make_problem_request",
+        return_value={"status": "OK", "result": {"enabled": True}},
+    )
+    def test_enable_problem_groups_uses_post(self, request_mock):
+        result = enable_problem_groups(
+            "key",
+            "secret",
+            "https://polygon.codeforces.com/api/",
+            1,
+            AccessType.OWNER,
+            testset="tests",
+            enable=True,
+        )
+
+        self.assertEqual(result, {"enabled": True})
+        args, kwargs = request_mock.call_args
+        self.assertEqual(args[3], "problem.enableGroups")
+        self.assertEqual(args[6]["enable"], "true")
+        self.assertEqual(kwargs["http_method"], "POST")
+
+    @patch(
+        "src.polygon.api.problem_tests_extended.make_problem_request",
+        return_value={"status": "OK", "result": {"enabled": True}},
+    )
+    def test_enable_problem_points_uses_post(self, request_mock):
+        result = enable_problem_points(
+            "key",
+            "secret",
+            "https://polygon.codeforces.com/api/",
+            1,
+            AccessType.OWNER,
+            enable=False,
+        )
+
+        self.assertEqual(result, {"enabled": True})
+        args, kwargs = request_mock.call_args
+        self.assertEqual(args[3], "problem.enablePoints")
+        self.assertEqual(args[6]["enable"], "false")
         self.assertEqual(kwargs["http_method"], "POST")
 
     def test_save_problem_solution_rejects_non_solution_source_type(self):
