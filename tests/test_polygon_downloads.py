@@ -1,7 +1,11 @@
 import unittest
 from unittest.mock import Mock, patch
 
-from src.mcp.utils.downloads import download_problem_package_by_url
+from src.mcp.utils.downloads import (
+    download_contest_statements_pdf_info,
+    download_problem_package_by_url,
+    download_problem_package_info_by_url,
+)
 from src.polygon.download import (
     download_contest_descriptor,
     download_contest_statements_pdf,
@@ -74,6 +78,45 @@ class PolygonDownloadsTest(unittest.TestCase):
             revision=None,
             package_type="linux",
         )
+
+    @patch("src.mcp.utils.downloads.download_problem_package_by_url", return_value=b"zip-bytes")
+    def test_download_problem_package_info_by_url_returns_metadata(self, download_mock):
+        result = download_problem_package_info_by_url(
+            "https://polygon.codeforces.com/p/demo/a-plus-b",
+            revision=7,
+            package_type="linux",
+        )
+
+        self.assertEqual(result["status"], "success")
+        self.assertEqual(result["action"], "download_problem_package_info_by_url")
+        self.assertEqual(result["filename"], "package.zip")
+        self.assertEqual(result["content_kind"], "zip")
+        self.assertEqual(result["size_bytes"], 9)
+        self.assertEqual(result["revision"], 7)
+        self.assertEqual(result["package_type"], "linux")
+        self.assertEqual(
+            result["sha256"],
+            "4b9a4ac59f3c3aa32273260df6cf4bf358d1c46f8415126aa35b6380d0abb8f7",
+        )
+        download_mock.assert_called_once()
+
+    @patch("src.mcp.utils.downloads.download_contest_statements_pdf", return_value=b"%PDF-1.7")
+    def test_download_contest_statements_pdf_info_returns_metadata(self, download_mock):
+        result = download_contest_statements_pdf_info(
+            "https://polygon.codeforces.com/c/demo-contest",
+            language="english",
+        )
+
+        self.assertEqual(result["status"], "success")
+        self.assertEqual(result["filename"], "statements.pdf")
+        self.assertEqual(result["content_kind"], "pdf")
+        self.assertEqual(result["language"], "english")
+        self.assertEqual(result["size_bytes"], 8)
+        self.assertEqual(
+            result["sha256"],
+            "86edbaa24831badfa0a8b04bb410141e2ee4182b6d0014493fe262a7a331c20b",
+        )
+        download_mock.assert_called_once()
 
 
 if __name__ == "__main__":

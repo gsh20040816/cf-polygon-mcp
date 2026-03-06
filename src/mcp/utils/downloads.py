@@ -1,3 +1,4 @@
+import hashlib
 from typing import Optional
 
 from src.mcp.utils.common import get_account_credentials
@@ -7,6 +8,27 @@ from src.polygon.download import (
     download_problem_descriptor as _download_problem_descriptor,
     download_problem_package as _download_problem_package,
 )
+
+
+def _build_download_info(
+    *,
+    action: str,
+    source_url: str,
+    filename: str,
+    content_kind: str,
+    content: bytes,
+    **context,
+) -> dict:
+    return {
+        "status": "success",
+        "action": action,
+        "source_url": source_url,
+        "filename": filename,
+        "content_kind": content_kind,
+        "size_bytes": len(content),
+        "sha256": hashlib.sha256(content).hexdigest(),
+        **{key: value for key, value in context.items() if value is not None},
+    }
 
 
 def download_problem_package_by_url(
@@ -42,6 +64,35 @@ def download_problem_package_by_url(
     )
 
 
+def download_problem_package_info_by_url(
+    problem_url: str,
+    pin: Optional[str] = None,
+    revision: Optional[int] = None,
+    package_type: Optional[str] = None,
+    login: Optional[str] = None,
+    password: Optional[str] = None,
+) -> dict:
+    """下载题目包并返回元数据。"""
+    content = download_problem_package_by_url(
+        problem_url=problem_url,
+        pin=pin,
+        revision=revision,
+        package_type=package_type,
+        login=login,
+        password=password,
+    )
+    return _build_download_info(
+        action="download_problem_package_info_by_url",
+        source_url=problem_url,
+        filename="package.zip",
+        content_kind="zip",
+        content=content,
+        pin=pin,
+        revision=revision,
+        package_type=package_type,
+    )
+
+
 def download_problem_descriptor(
     problem_url: str,
     pin: Optional[str] = None,
@@ -55,6 +106,32 @@ def download_problem_descriptor(
         problem_url=problem_url,
         login=resolved_login,
         password=resolved_password,
+        pin=pin,
+        revision=revision,
+    )
+
+
+def download_problem_descriptor_info(
+    problem_url: str,
+    pin: Optional[str] = None,
+    revision: Optional[int] = None,
+    login: Optional[str] = None,
+    password: Optional[str] = None,
+) -> dict:
+    """下载 problem.xml 并返回元数据。"""
+    content = download_problem_descriptor(
+        problem_url=problem_url,
+        pin=pin,
+        revision=revision,
+        login=login,
+        password=password,
+    )
+    return _build_download_info(
+        action="download_problem_descriptor_info",
+        source_url=problem_url,
+        filename="problem.xml",
+        content_kind="xml",
+        content=content,
         pin=pin,
         revision=revision,
     )
@@ -76,6 +153,29 @@ def download_contest_descriptor(
     )
 
 
+def download_contest_descriptor_info(
+    contest_url: str,
+    pin: Optional[str] = None,
+    login: Optional[str] = None,
+    password: Optional[str] = None,
+) -> dict:
+    """下载 contest.xml 并返回元数据。"""
+    content = download_contest_descriptor(
+        contest_url=contest_url,
+        pin=pin,
+        login=login,
+        password=password,
+    )
+    return _build_download_info(
+        action="download_contest_descriptor_info",
+        source_url=contest_url,
+        filename="contest.xml",
+        content_kind="xml",
+        content=content,
+        pin=pin,
+    )
+
+
 def download_contest_statements_pdf(
     contest_url: str,
     language: str = "english",
@@ -89,6 +189,32 @@ def download_contest_statements_pdf(
         contest_url=contest_url,
         login=resolved_login,
         password=resolved_password,
+        language=language,
+        pin=pin,
+    )
+
+
+def download_contest_statements_pdf_info(
+    contest_url: str,
+    language: str = "english",
+    pin: Optional[str] = None,
+    login: Optional[str] = None,
+    password: Optional[str] = None,
+) -> dict:
+    """下载比赛陈述 PDF 并返回元数据。"""
+    content = download_contest_statements_pdf(
+        contest_url=contest_url,
+        language=language,
+        pin=pin,
+        login=login,
+        password=password,
+    )
+    return _build_download_info(
+        action="download_contest_statements_pdf_info",
+        source_url=contest_url,
+        filename="statements.pdf",
+        content_kind="pdf",
+        content=content,
         language=language,
         pin=pin,
     )

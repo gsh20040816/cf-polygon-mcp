@@ -2,9 +2,13 @@ from importlib.metadata import PackageNotFoundError, version
 
 from src.mcp.utils.downloads import (
     download_contest_descriptor,
+    download_contest_descriptor_info,
     download_contest_statements_pdf,
+    download_contest_statements_pdf_info,
     download_problem_descriptor,
+    download_problem_descriptor_info,
     download_problem_package_by_url,
+    download_problem_package_info_by_url,
 )
 from mcp.server.fastmcp import FastMCP
 from src.mcp.utils.problem_content import (
@@ -84,9 +88,13 @@ mcp._mcp_server.version = _get_server_version()
 
 # 注册各个工具函数
 mcp.tool()(download_problem_package_by_url)
+mcp.tool()(download_problem_package_info_by_url)
 mcp.tool()(download_problem_descriptor)
+mcp.tool()(download_problem_descriptor_info)
 mcp.tool()(download_contest_descriptor)
+mcp.tool()(download_contest_descriptor_info)
 mcp.tool()(download_contest_statements_pdf)
+mcp.tool()(download_contest_statements_pdf_info)
 mcp.tool()(create_problem)
 mcp.tool()(get_problems)
 mcp.tool()(get_problem_info)
