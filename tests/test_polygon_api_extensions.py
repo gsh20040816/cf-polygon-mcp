@@ -1,9 +1,11 @@
 import unittest
 from unittest.mock import Mock, patch
 
+from src.polygon.api.contest_problems import get_contest_problems
 from src.polygon.api.problem_content import save_problem_file
 from src.polygon.api.problem_extra_validators import get_problem_extra_validators
 from src.polygon.api.problem_packages import commit_problem_changes
+from src.polygon.api.problem_save_statement import save_problem_statement
 from src.polygon.api.problem_sources import save_problem_solution
 from src.polygon.models import AccessType, FileType, SolutionTag, SourceType
 from src.polygon.utils.client_utils import make_api_request
@@ -151,6 +153,71 @@ class PolygonApiExtensionsTest(unittest.TestCase):
             1,
             "9999",
         )
+
+    @patch("builtins.print")
+    @patch(
+        "src.polygon.api.problem_save_statement.make_problem_request",
+        return_value={"status": "OK", "result": {"saved": True}},
+    )
+    def test_save_problem_statement_uses_post_and_does_not_print(
+        self,
+        request_mock,
+        print_mock,
+    ):
+        result = save_problem_statement(
+            "key",
+            "secret",
+            "https://polygon.codeforces.com/api/",
+            1,
+            "english",
+            AccessType.OWNER,
+            name="A + B",
+            legend="desc",
+        )
+
+        self.assertEqual(result, {"saved": True})
+        args, kwargs = request_mock.call_args
+        self.assertEqual(args[3], "problem.saveStatement")
+        self.assertEqual(kwargs["http_method"], "POST")
+        print_mock.assert_not_called()
+
+    @patch("builtins.print")
+    @patch(
+        "src.polygon.api.contest_problems.make_contest_request",
+        return_value={
+            "status": "OK",
+            "result": {
+                "B": {
+                    "id": 2,
+                    "name": "Beta",
+                    "owner": "owner",
+                    "accessType": "WRITE",
+                },
+                "A": {
+                    "id": 1,
+                    "name": "Alpha",
+                    "owner": "owner",
+                    "accessType": "OWNER",
+                },
+            },
+        },
+    )
+    def test_get_contest_problems_parses_letter_mapping_without_printing(
+        self,
+        request_mock,
+        print_mock,
+    ):
+        problems = get_contest_problems(
+            "key",
+            "secret",
+            "https://polygon.codeforces.com/api/",
+            123,
+        )
+
+        self.assertEqual([problem.contestLetter for problem in problems], ["A", "B"])
+        self.assertEqual([problem.name for problem in problems], ["Alpha", "Beta"])
+        request_mock.assert_called_once()
+        print_mock.assert_not_called()
 
 
 if __name__ == "__main__":

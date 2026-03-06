@@ -3,12 +3,21 @@ from tempfile import TemporaryDirectory
 import unittest
 from unittest.mock import Mock, patch
 
+from src.mcp.utils.contest_problems import get_contest_problems
 from src.mcp.utils.problem_content import save_problem_file, save_problem_script
 from src.mcp.utils.problem_extra_validators import get_problem_extra_validators
 from src.mcp.utils.problem_info import get_problem_info
 from src.mcp.utils.problem_sources import save_problem_solution
 from src.mcp.utils.problem_tests_extended import save_problem_test_group
-from src.polygon.models import FeedbackPolicy, FileType, PointsPolicy, SolutionTag, SourceType
+from src.polygon.models import (
+    AccessType,
+    FeedbackPolicy,
+    FileType,
+    PointsPolicy,
+    Problem,
+    SolutionTag,
+    SourceType,
+)
 
 
 class MpcUtilsExtensionsTest(unittest.TestCase):
@@ -160,6 +169,32 @@ class MpcUtilsExtensionsTest(unittest.TestCase):
                 source="gen 1",
                 local_path="generator.txt",
             )
+
+    @patch("builtins.print")
+    @patch("src.mcp.utils.contest_problems.PolygonClient")
+    @patch("src.mcp.utils.contest_problems.get_api_credentials", return_value=("key", "secret"))
+    def test_get_contest_problems_is_silent(self, _credentials_mock, client_cls, print_mock):
+        problems = [
+            Problem(
+                id=1,
+                owner="owner",
+                name="A",
+                accessType=AccessType.OWNER,
+                contestLetter="A",
+            )
+        ]
+        session = Mock()
+        session.get_problems.return_value = problems
+        client = Mock()
+        client.create_contest_session.return_value = session
+        client_cls.return_value = client
+
+        result = get_contest_problems(contest_id=1000, pin="9999")
+
+        self.assertEqual(result["status"], "success")
+        self.assertEqual(result["problems"], problems)
+        client.create_contest_session.assert_called_once_with(1000, "9999")
+        print_mock.assert_not_called()
 
 
 if __name__ == "__main__":

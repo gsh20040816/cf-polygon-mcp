@@ -5,16 +5,19 @@ from unittest.mock import Mock, patch
 from src.mcp.utils.problem_readiness import check_problem_readiness
 from src.polygon.models import (
     AccessType,
+    FeedbackPolicy,
     File,
     Package,
     PackageState,
     PackageType,
+    PointsPolicy,
     ProblemInfo,
     Solution,
     SolutionTag,
     SourceType,
     Statement,
     Test,
+    TestGroup,
 )
 
 
@@ -333,6 +336,84 @@ class MpcProblemReadinessTest(unittest.TestCase):
             "题目存在带分测试，但以下题面缺少 scoring 字段: english",
             result["warnings"],
         )
+
+    @patch("src.mcp.utils.problem_readiness.get_problem_session")
+    def test_check_problem_readiness_reports_test_group_gaps(self, session_mock):
+        session = Mock()
+        session.client.get_problems.return_value = [_problem_meta(modified=False)]
+        session.get_info.return_value = ProblemInfo(
+            inputFile="stdin",
+            outputFile="stdout",
+            interactive=False,
+            timeLimit=2000,
+            memoryLimit=256,
+        )
+        session.get_statements.return_value = _StatementMap(
+            {
+                "english": Statement(
+                    encoding="utf-8",
+                    name="Grouped",
+                    legend="desc",
+                    input="in",
+                    output="out",
+                )
+            }
+        )
+        session.get_validator.return_value = "validator.cpp"
+        session.get_checker.return_value = "checker.cpp"
+        session.get_interactor.return_value = ""
+        session.get_extra_validators.return_value = []
+        session.get_files.return_value = _problem_files("validator.cpp", "checker.cpp")
+        session.get_tests.return_value = [
+            Test(
+                index=1,
+                manual=True,
+                input="1 2",
+                useInStatements=True,
+                inputForStatement="1 2",
+                outputForStatement="3",
+                verifyInputOutputForStatements=True,
+                group="samples",
+            ),
+            Test(
+                index=2,
+                manual=True,
+                input="2 3",
+                useInStatements=False,
+                group="missing-group",
+            ),
+        ]
+        session.view_test_groups.return_value = [
+            TestGroup(
+                name="samples",
+                pointsPolicy=PointsPolicy.EACH_TEST,
+                feedbackPolicy=FeedbackPolicy.POINTS,
+                dependencies=[],
+            ),
+            TestGroup(
+                name="unused",
+                pointsPolicy=PointsPolicy.COMPLETE_GROUP,
+                feedbackPolicy=FeedbackPolicy.ICPC,
+                dependencies=["ghost"],
+            ),
+        ]
+        session.get_solutions.return_value = [
+            _solution("main.cpp", SolutionTag.MA),
+            _solution("wa.cpp", SolutionTag.WA),
+        ]
+        session.get_validator_tests.return_value = [Mock()]
+        session.get_checker_tests.return_value = [Mock()]
+        session.get_packages.return_value = [_ready_package()]
+        session.get_general_tutorial.return_value = "tutorial"
+        session_mock.return_value = session
+
+        result = check_problem_readiness(problem_id=1)
+
+        self.assertFalse(result["ready"])
+        self.assertIn("以下测试引用了未定义的测试组: missing-group", result["blocking_issues"])
+        self.assertIn("以下测试组依赖了未定义的测试组: unused -> ghost", result["blocking_issues"])
+        self.assertIn("以下测试组未分配任何测试: unused", result["warnings"])
+        self.assertEqual(result["details"]["test_groups"]["defined_count"], 2)
 
 
 if __name__ == "__main__":

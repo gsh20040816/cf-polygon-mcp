@@ -1,6 +1,12 @@
 from typing import Optional
-from src.polygon.models import AccessType, Statement
+from src.polygon.models import AccessType
 from src.polygon.utils.problem_utils import make_problem_request, check_write_access
+
+
+def _unwrap_result(response):
+    if isinstance(response, dict) and "result" in response:
+        return response["result"]
+    return response
 
 def save_problem_statement(
     api_key: str,
@@ -73,17 +79,12 @@ def save_problem_statement(
         params["notes"] = notes
     if tutorial is not None:
         params["tutorial"] = tutorial
-    
-    # 打印请求参数，用于调试
-    print("保存题目陈述请求参数:", params)
-    
-    # 发送请求
+
     response = make_problem_request(
         api_key, api_secret, base_url,
         "problem.saveStatement", problem_id, pin,
-        params
+        params,
+        http_method="POST",
     )
-    
-    if isinstance(response, dict) and "result" in response:
-        return response["result"]
-    return {"status": "OK"} 
+
+    return _unwrap_result(response)

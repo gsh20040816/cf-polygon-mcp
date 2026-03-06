@@ -21,6 +21,12 @@ def _has_text(value: Optional[str]) -> bool:
     return bool(value and value.strip())
 
 
+def _normalize_text(value: Optional[str]) -> Optional[str]:
+    if not _has_text(value):
+        return None
+    return value.strip()
+
+
 def _serialize_problem(problem: Any) -> dict[str, Any]:
     return {
         "id": problem.id,
@@ -205,6 +211,13 @@ def check_problem_readiness(
             "manual_count": sum(1 for test in tests if test.manual),
             "generated_count": len(generated_tests),
             "sample_count": len(statement_samples),
+            "group_names": sorted(
+                {
+                    group_name
+                    for test in tests
+                    if (group_name := _normalize_text(test.group)) is not None
+                }
+            ),
             "samples_missing_input_for_statement": samples_missing_input,
             "samples_missing_output_for_statement": samples_missing_output,
             "samples_without_statement_verification": samples_without_verification,
@@ -246,6 +259,54 @@ def check_problem_readiness(
             }
             if not _has_text(script_text):
                 warnings.append(f"测试集 {testset} 存在生成测试，但生成脚本为空")
+        group_names = details["tests"]["group_names"]
+        if group_names:
+            test_groups = session.view_test_groups(testset=testset)
+            defined_group_names: set[str] = set()
+            duplicate_group_names: set[str] = set()
+            undefined_dependencies: list[str] = []
+
+            for test_group in test_groups:
+                group_name = _normalize_text(test_group.name)
+                if group_name is None:
+                    continue
+                if group_name in defined_group_names:
+                    duplicate_group_names.add(group_name)
+                defined_group_names.add(group_name)
+
+            for test_group in test_groups:
+                group_name = _normalize_text(test_group.name)
+                if group_name is None:
+                    continue
+                for dependency in test_group.dependencies:
+                    dependency_name = _normalize_text(dependency)
+                    if dependency_name is not None and dependency_name not in defined_group_names:
+                        undefined_dependencies.append(f"{group_name} -> {dependency_name}")
+
+            undefined_group_names = sorted(set(group_names) - defined_group_names)
+            empty_group_names = sorted(defined_group_names - set(group_names))
+            details["test_groups"] = {
+                "defined_count": len(test_groups),
+                "defined_names": sorted(defined_group_names),
+                "undefined_group_names": undefined_group_names,
+                "duplicate_group_names": sorted(duplicate_group_names),
+                "undefined_dependencies": undefined_dependencies,
+                "empty_group_names": empty_group_names,
+            }
+            if undefined_group_names:
+                blocking_issues.append(
+                    "以下测试引用了未定义的测试组: " + ", ".join(undefined_group_names)
+                )
+            if duplicate_group_names:
+                blocking_issues.append(
+                    "以下测试组定义重复: " + ", ".join(sorted(duplicate_group_names))
+                )
+            if undefined_dependencies:
+                blocking_issues.append(
+                    "以下测试组依赖了未定义的测试组: " + ", ".join(undefined_dependencies)
+                )
+            if empty_group_names:
+                warnings.append("以下测试组未分配任何测试: " + ", ".join(empty_group_names))
     except Exception as exc:
         _append_check_error("测试", exc, blocking_issues, details)
 
@@ -305,8 +366,8 @@ def check_problem_readiness(
 
     try:
         tutorial = session.get_general_tutorial()
-        details["general_tutorial"] = {"present": bool(tutorial.strip())}
-        if not tutorial.strip():
+        details["general_tutorial"] = {"present": _has_text(tutorial)}
+        if not _has_text(tutorial):
             warnings.append("通用题解为空")
     except Exception as exc:
         _append_check_error("通用题解", exc, blocking_issues, details)

@@ -1,10 +1,12 @@
 from typing import Dict, Optional
+
 from src.polygon.client import PolygonClient
 from src.mcp.utils.common import get_api_credentials
 
+
 def get_contest_problems(
     contest_id: int,
-    pin: Optional[str] = None
+    pin: Optional[str] = None,
 ) -> Dict:
     """
     获取Polygon比赛中的所有题目
@@ -27,50 +29,39 @@ def get_contest_problems(
     """
     try:
         api_key, api_secret = get_api_credentials()
-        
-        status_message = f"正在获取比赛 {contest_id} 的题目..."
-        print(status_message)
-        
+
         client = PolygonClient(api_key, api_secret)
         session = client.create_contest_session(contest_id, pin)
         problems = session.get_problems()
-        
+
         if not problems:
             error_message = f"比赛 {contest_id} 中没有找到题目。这可能是因为：\n" \
                           "1. 比赛ID不正确\n" \
                           "2. 没有访问权限\n" \
                           "3. PIN码错误或缺失"
-            print(error_message)
             return {
                 "status": "error",
                 "message": error_message,
-                "problems": []
+                "problems": [],
             }
-            
+
         result_message = f"成功获取到 {len(problems)} 个题目"
-        print(result_message)
-        problems_info = [f"- {problem}" for problem in problems]
-        print("\n".join(problems_info))
-            
         return {
             "status": "success",
             "message": result_message,
-            "problems": problems
+            "problems": problems,
         }
-        
     except ValueError as e:
         error_message = f"API凭证错误: {str(e)}"
-        print(error_message)
         return {
             "status": "error",
             "message": error_message,
-            "problems": []
+            "problems": [],
         }
     except Exception as e:
         error_message = f"获取比赛题目失败: {str(e)}"
-        print(error_message)
         return {
             "status": "error",
             "message": error_message,
-            "problems": []
-        } 
+            "problems": [],
+        }
