@@ -1,3 +1,5 @@
+from importlib.metadata import PackageNotFoundError, version
+
 from src.mcp.utils.downloads import (
     download_contest_descriptor,
     download_contest_statements_pdf,
@@ -66,8 +68,19 @@ from src.mcp.utils.problem_update_info import update_problem_info
 from src.mcp.utils.problem_working_copy import update_problem_working_copy, discard_problem_working_copy
 from src.mcp.utils.problem_save_statement import save_problem_statement
 
+
+def _get_server_version() -> str:
+    for package_name in ("cf-polygon-mcp", "cf_polygon_mcp"):
+        try:
+            return version(package_name)
+        except PackageNotFoundError:
+            continue
+    return "unknown"
+
+
 # 创建MCP服务器
 mcp = FastMCP("CF-Polygon-MCP")
+mcp._mcp_server.version = _get_server_version()
 
 # 注册各个工具函数
 mcp.tool()(download_problem_package_by_url)
