@@ -140,6 +140,10 @@ class MpcProblemReadinessTest(unittest.TestCase):
         self.assertTrue(result["ready"])
         self.assertEqual(result["blocking_issues"], [])
         self.assertEqual(result["warnings"], [])
+        self.assertEqual(result["summary"]["status"], "ready")
+        self.assertEqual(result["summary"]["recommendation"], "ready_for_release")
+        self.assertEqual(result["summary"]["blocking_issue_count"], 0)
+        self.assertEqual(result["summary"]["warning_count"], 0)
         self.assertEqual(result["details"]["tests"]["sample_count"], 1)
 
     @patch("src.mcp.utils.problem_readiness.get_problem_session")
@@ -174,6 +178,9 @@ class MpcProblemReadinessTest(unittest.TestCase):
         self.assertIn("测试集 tests 中没有测试", result["blocking_issues"])
         self.assertIn("缺少正确解", result["blocking_issues"])
         self.assertIn("通用题解为空", result["warnings"])
+        self.assertEqual(result["summary"]["status"], "blocked")
+        self.assertEqual(result["summary"]["recommendation"], "fix_blocking_issues")
+        self.assertGreater(result["summary"]["blocking_issue_count"], 0)
 
     @patch("src.mcp.utils.problem_readiness.get_problem_session")
     def test_check_problem_readiness_reports_non_blocking_warnings(self, session_mock):
@@ -222,6 +229,10 @@ class MpcProblemReadinessTest(unittest.TestCase):
         self.assertIn("缺少错误解或边界解，校验覆盖可能不足", result["warnings"])
         self.assertIn("未配置 validator 测试", result["warnings"])
         self.assertIn("还没有 READY 状态的题目包", result["warnings"])
+        self.assertEqual(result["summary"]["status"], "warnings")
+        self.assertEqual(result["summary"]["recommendation"], "review_warnings")
+        self.assertEqual(result["summary"]["blocking_issue_count"], 0)
+        self.assertGreater(result["summary"]["warning_count"], 0)
 
     @patch("src.mcp.utils.problem_readiness.get_problem_session")
     def test_check_problem_readiness_ignores_interactor_errors_for_non_interactive_problem(

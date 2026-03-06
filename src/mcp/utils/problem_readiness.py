@@ -38,6 +38,35 @@ def _serialize_problem(problem: Any) -> dict[str, Any]:
     }
 
 
+def _build_summary(
+    blocking_issues: list[str],
+    warnings: list[str],
+    details: dict[str, Any],
+) -> dict[str, Any]:
+    error_sections = sorted(
+        key
+        for key, value in details.items()
+        if isinstance(value, dict) and value.get("status") == "error"
+    )
+    if blocking_issues:
+        status = "blocked"
+        recommendation = "fix_blocking_issues"
+    elif warnings:
+        status = "warnings"
+        recommendation = "review_warnings"
+    else:
+        status = "ready"
+        recommendation = "ready_for_release"
+    return {
+        "status": status,
+        "recommendation": recommendation,
+        "blocking_issue_count": len(blocking_issues),
+        "warning_count": len(warnings),
+        "error_section_count": len(error_sections),
+        "sections_with_errors": error_sections,
+    }
+
+
 def check_problem_readiness(
     problem_id: int,
     pin: Optional[str] = None,
@@ -372,10 +401,12 @@ def check_problem_readiness(
     except Exception as exc:
         _append_check_error("通用题解", exc, blocking_issues, details)
 
+    summary = _build_summary(blocking_issues, warnings, details)
     return {
         "status": "success",
         "ready": not blocking_issues,
         "blocking_issues": blocking_issues,
         "warnings": warnings,
+        "summary": summary,
         "details": details,
     }
