@@ -32,6 +32,7 @@ def set_problem_validator(
         problem_id,
         pin,
         {"validator": validator},
+        http_method="POST",
     )
     return _unwrap_result(response)
 
@@ -54,6 +55,7 @@ def set_problem_checker(
         problem_id,
         pin,
         {"checker": checker},
+        http_method="POST",
     )
     return _unwrap_result(response)
 
@@ -76,6 +78,7 @@ def set_problem_interactor(
         problem_id,
         pin,
         {"interactor": interactor},
+        http_method="POST",
     )
     return _unwrap_result(response)
 

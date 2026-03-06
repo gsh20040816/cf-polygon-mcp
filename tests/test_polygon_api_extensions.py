@@ -10,6 +10,11 @@ from src.polygon.api.problem_sources import save_problem_solution
 from src.polygon.api.problem_discard_working_copy import discard_problem_working_copy
 from src.polygon.api.problem_update_info import update_problem_info
 from src.polygon.api.problem_update_working_copy import update_problem_working_copy
+from src.polygon.api.problem_sources import (
+    set_problem_checker,
+    set_problem_interactor,
+    set_problem_validator,
+)
 from src.polygon.models import AccessType, FileType, SolutionTag, SourceType
 from src.polygon.utils.client_utils import make_api_request
 
@@ -142,6 +147,66 @@ class PolygonApiExtensionsTest(unittest.TestCase):
         self.assertNotIn("sourceType", args[6])
         self.assertEqual(args[6]["tag"], "WA")
         self.assertEqual(args[6]["checkExisting"], "true")
+
+    @patch(
+        "src.polygon.api.problem_sources.make_problem_request",
+        return_value={"status": "OK", "result": {"saved": True}},
+    )
+    def test_set_problem_validator_uses_post(self, request_mock):
+        result = set_problem_validator(
+            "key",
+            "secret",
+            "https://polygon.codeforces.com/api/",
+            1,
+            AccessType.OWNER,
+            "validator.cpp",
+        )
+
+        self.assertEqual(result, {"saved": True})
+        args, kwargs = request_mock.call_args
+        self.assertEqual(args[3], "problem.setValidator")
+        self.assertEqual(args[6]["validator"], "validator.cpp")
+        self.assertEqual(kwargs["http_method"], "POST")
+
+    @patch(
+        "src.polygon.api.problem_sources.make_problem_request",
+        return_value={"status": "OK", "result": {"saved": True}},
+    )
+    def test_set_problem_checker_uses_post(self, request_mock):
+        result = set_problem_checker(
+            "key",
+            "secret",
+            "https://polygon.codeforces.com/api/",
+            1,
+            AccessType.OWNER,
+            "checker.cpp",
+        )
+
+        self.assertEqual(result, {"saved": True})
+        args, kwargs = request_mock.call_args
+        self.assertEqual(args[3], "problem.setChecker")
+        self.assertEqual(args[6]["checker"], "checker.cpp")
+        self.assertEqual(kwargs["http_method"], "POST")
+
+    @patch(
+        "src.polygon.api.problem_sources.make_problem_request",
+        return_value={"status": "OK", "result": {"saved": True}},
+    )
+    def test_set_problem_interactor_uses_post(self, request_mock):
+        result = set_problem_interactor(
+            "key",
+            "secret",
+            "https://polygon.codeforces.com/api/",
+            1,
+            AccessType.OWNER,
+            "interactor.cpp",
+        )
+
+        self.assertEqual(result, {"saved": True})
+        args, kwargs = request_mock.call_args
+        self.assertEqual(args[3], "problem.setInteractor")
+        self.assertEqual(args[6]["interactor"], "interactor.cpp")
+        self.assertEqual(kwargs["http_method"], "POST")
 
     def test_save_problem_solution_rejects_non_solution_source_type(self):
         with self.assertRaisesRegex(ValueError, "只接受 solution 类型"):
