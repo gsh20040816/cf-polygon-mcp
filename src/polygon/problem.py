@@ -18,6 +18,7 @@ from .api.problem_content import (
 from .api.problem_discard_working_copy import discard_problem_working_copy
 from .api.problem_info import get_problem_info
 from .api.problem_interactor import get_problem_interactor
+from .api.problem_extra_validators import get_problem_extra_validators
 from .api.problem_packages import (
     build_problem_package,
     commit_problem_changes,
@@ -219,6 +220,15 @@ class ProblemSession:
 
     def get_validator(self) -> str:
         return get_problem_validator(
+            self.client.api_key,
+            self.client.api_secret,
+            self.client.base_url,
+            self.problem_id,
+            self.pin,
+        )
+
+    def get_extra_validators(self) -> list[str]:
+        return get_problem_extra_validators(
             self.client.api_key,
             self.client.api_secret,
             self.client.base_url,

@@ -25,6 +25,7 @@ from src.mcp.utils.problem_info import get_problem_info
 from src.mcp.utils.problem_statements import get_problem_statements
 from src.mcp.utils.problem_checker import get_problem_checker
 from src.mcp.utils.problem_validator import get_problem_validator
+from src.mcp.utils.problem_extra_validators import get_problem_extra_validators
 from src.mcp.utils.problem_interactor import get_problem_interactor
 from src.mcp.utils.problem_file import view_problem_file
 from src.mcp.utils.problem_packages import (
@@ -79,6 +80,7 @@ mcp.tool()(save_problem_statement_resource)
 mcp.tool()(get_problem_checker)
 mcp.tool()(set_problem_checker)
 mcp.tool()(get_problem_validator)
+mcp.tool()(get_problem_extra_validators)
 mcp.tool()(set_problem_validator)
 mcp.tool()(get_problem_interactor)
 mcp.tool()(set_problem_interactor)

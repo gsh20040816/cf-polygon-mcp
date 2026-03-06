@@ -2,6 +2,7 @@ import unittest
 from unittest.mock import Mock, patch
 
 from src.mcp.utils.problem_content import save_problem_file
+from src.mcp.utils.problem_extra_validators import get_problem_extra_validators
 from src.mcp.utils.problem_info import get_problem_info
 from src.mcp.utils.problem_tests_extended import save_problem_test_group
 from src.polygon.models import FeedbackPolicy, FileType, PointsPolicy, SourceType
@@ -70,6 +71,18 @@ class MpcUtilsExtensionsTest(unittest.TestCase):
             feedback_policy=FeedbackPolicy.POINTS,
             dependencies=["pretests"],
         )
+
+    @patch("src.mcp.utils.problem_extra_validators.get_problem_session")
+    def test_get_problem_extra_validators_passes_pin(self, session_mock):
+        session = Mock()
+        session.get_extra_validators.return_value = ["validator-extra.cpp"]
+        session_mock.return_value = session
+
+        result = get_problem_extra_validators(1, pin="5678")
+
+        self.assertEqual(result, ["validator-extra.cpp"])
+        session_mock.assert_called_once_with(1, "5678")
+        session.get_extra_validators.assert_called_once_with()
 
 
 if __name__ == "__main__":
