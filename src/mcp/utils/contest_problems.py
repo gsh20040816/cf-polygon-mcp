@@ -1,6 +1,6 @@
 from typing import Dict, Optional
 
-from src.mcp.utils.common import build_operation_result
+from src.mcp.utils.common import build_operation_result, serialize_problem
 from src.polygon.client import PolygonClient
 from src.mcp.utils.common import get_api_credentials
 
@@ -51,6 +51,7 @@ def get_contest_problems(
             )
 
         result_message = f"成功获取到 {len(problems)} 个题目"
+        problem_summaries = [serialize_problem(problem) for problem in problems]
         return build_operation_result(
             action="get_contest_problems",
             success=True,
@@ -58,6 +59,8 @@ def get_contest_problems(
             contest_id=contest_id,
             pin=pin,
             count=len(problems),
+            letters=[problem.get("contest_letter") for problem in problem_summaries],
+            problem_summaries=problem_summaries,
             problems=problems,
         )
     except ValueError as exc:
