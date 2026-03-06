@@ -5,7 +5,6 @@ from .api.problem_content import (
     get_problem_files,
     get_problem_general_description,
     get_problem_general_tutorial,
-    get_problem_script,
     get_problem_statement_resources,
     get_problem_tags,
     save_problem_file,
@@ -14,6 +13,7 @@ from .api.problem_content import (
     save_problem_script,
     save_problem_statement_resource,
     save_problem_tags,
+    view_problem_script,
 )
 from .api.problem_discard_working_copy import discard_problem_working_copy
 from .api.problem_info import get_problem_info
@@ -306,7 +306,7 @@ class ProblemSession:
         )
 
     def view_script(self, testset: str) -> bytes:
-        return get_problem_script(
+        return view_problem_script(
             self.client.api_key,
             self.client.api_secret,
             self.client.base_url,

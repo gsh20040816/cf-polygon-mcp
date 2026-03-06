@@ -1,8 +1,9 @@
-from src.polygon.models import ProblemInfo
-from src.polygon.client import PolygonClient
-from src.mcp.utils.common import get_api_credentials
+from typing import Optional
 
-def get_problem_info(problem_id: int) -> ProblemInfo:
+from src.mcp.utils.common import get_problem_session
+from src.polygon.models import ProblemInfo
+
+def get_problem_info(problem_id: int, pin: Optional[str] = None) -> ProblemInfo:
     """
     获取Polygon题目的基本信息
     
@@ -20,8 +21,4 @@ def get_problem_info(problem_id: int) -> ProblemInfo:
     Raises:
         ValueError: 当环境变量未设置时抛出
     """
-    api_key, api_secret = get_api_credentials()
-    
-    client = PolygonClient(api_key, api_secret)
-    session = client.create_problem_session(problem_id)
-    return session.get_info() 
+    return get_problem_session(problem_id, pin).get_info()

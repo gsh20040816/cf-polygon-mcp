@@ -46,8 +46,6 @@ def save_problem_statement(
         client = PolygonClient(api_key, api_secret)
         session = client.create_problem_session(problem_id, pin)
         
-        # 不直接获取result，因为可能会引发异常
-        print(f"MCP 工具传入参数: notes={notes}, lang={lang}")
         session.save_statement(
             lang=lang,
             encoding=encoding,
