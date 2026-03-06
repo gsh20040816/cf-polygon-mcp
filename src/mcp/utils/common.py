@@ -20,6 +20,22 @@ def get_api_credentials() -> tuple[str, str]:
     return api_key, api_secret
 
 
+def get_account_credentials(
+    login: Optional[str] = None,
+    password: Optional[str] = None,
+) -> tuple[str, str]:
+    """获取 Polygon 账号密码，参数优先，其次读取环境变量。"""
+    resolved_login = login or os.getenv("POLYGON_LOGIN")
+    resolved_password = password or os.getenv("POLYGON_PASSWORD")
+
+    if not resolved_login or not resolved_password:
+        raise ValueError(
+            "请提供 Polygon 账号密码，或设置环境变量 POLYGON_LOGIN 和 POLYGON_PASSWORD"
+        )
+
+    return resolved_login, resolved_password
+
+
 def get_client() -> PolygonClient:
     """创建一个带环境变量凭证的 PolygonClient。"""
     api_key, api_secret = get_api_credentials()

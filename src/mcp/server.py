@@ -1,3 +1,9 @@
+from src.mcp.utils.downloads import (
+    download_contest_descriptor,
+    download_contest_statements_pdf,
+    download_problem_descriptor,
+    download_problem_package_by_url,
+)
 from mcp.server.fastmcp import FastMCP
 from src.mcp.utils.problem_content import (
     get_problem_files,
@@ -60,6 +66,10 @@ from src.mcp.utils.problem_save_statement import save_problem_statement
 mcp = FastMCP("CF-Polygon-MCP")
 
 # 注册各个工具函数
+mcp.tool()(download_problem_package_by_url)
+mcp.tool()(download_problem_descriptor)
+mcp.tool()(download_contest_descriptor)
+mcp.tool()(download_contest_statements_pdf)
 mcp.tool()(create_problem)
 mcp.tool()(get_problems)
 mcp.tool()(get_problem_info)

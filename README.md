@@ -14,6 +14,7 @@
 - 获取和设置题目验证器、检查器、交互器等
 - 获取和保存题目标签、通用描述、通用题解
 - 获取历史包、下载包、构建包、提交工作副本
+- 通过 Polygon 账号密码下载 problem package、problem.xml、contest.xml、statements.pdf
 - 获取比赛题目列表
 - 更新题目信息
 - 更新/丢弃工作副本
@@ -28,7 +29,9 @@
 	"args": ["cf-polygon-mcp"],
 	"env": {
 		"POLYGON_API_KEY": "your_key",
-		"POLYGON_API_SECRET": "your_secret"
+		"POLYGON_API_SECRET": "your_secret",
+		"POLYGON_LOGIN": "your_login",
+		"POLYGON_PASSWORD": "your_password"
 	}
 }
 ```
