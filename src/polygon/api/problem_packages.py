@@ -80,6 +80,7 @@ def build_problem_package(
             "full": _bool_to_api(full),
             "verify": _bool_to_api(verify),
         },
+        http_method="POST",
     )
     return _unwrap_result(response)
 
@@ -110,5 +111,6 @@ def commit_problem_changes(
         problem_id,
         pin,
         params,
+        http_method="POST",
     )
     return _unwrap_result(response)

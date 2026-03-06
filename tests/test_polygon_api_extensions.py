@@ -4,7 +4,7 @@ from unittest.mock import Mock, patch
 from src.polygon.api.contest_problems import get_contest_problems
 from src.polygon.api.problem_content import save_problem_file
 from src.polygon.api.problem_extra_validators import get_problem_extra_validators
-from src.polygon.api.problem_packages import commit_problem_changes
+from src.polygon.api.problem_packages import build_problem_package, commit_problem_changes
 from src.polygon.api.problem_save_statement import save_problem_statement
 from src.polygon.api.problem_sources import save_problem_solution
 from src.polygon.api.problem_discard_working_copy import discard_problem_working_copy
@@ -92,9 +92,31 @@ class PolygonApiExtensionsTest(unittest.TestCase):
         )
 
         self.assertEqual(result, {"committed": True})
-        args, _ = request_mock.call_args
+        args, kwargs = request_mock.call_args
         self.assertEqual(args[6]["minorChanges"], "true")
         self.assertEqual(args[6]["message"], "sync docs")
+        self.assertEqual(kwargs["http_method"], "POST")
+
+    @patch(
+        "src.polygon.api.problem_packages.make_problem_request",
+        return_value={"status": "OK", "result": {"packageId": 10}},
+    )
+    def test_build_problem_package_uses_post(self, request_mock):
+        result = build_problem_package(
+            "key",
+            "secret",
+            "https://polygon.codeforces.com/api/",
+            1,
+            AccessType.OWNER,
+            full=True,
+            verify=False,
+        )
+
+        self.assertEqual(result, {"packageId": 10})
+        args, kwargs = request_mock.call_args
+        self.assertEqual(args[6]["full"], "true")
+        self.assertEqual(args[6]["verify"], "false")
+        self.assertEqual(kwargs["http_method"], "POST")
 
     @patch(
         "src.polygon.api.problem_sources.make_problem_request",
