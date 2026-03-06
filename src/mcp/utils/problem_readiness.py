@@ -51,15 +51,19 @@ def _build_summary(
     if blocking_issues:
         status = "blocked"
         recommendation = "fix_blocking_issues"
+        next_steps = ["补齐题面与必需配置后重新检查 readiness"]
     elif warnings:
         status = "warnings"
         recommendation = "review_warnings"
+        next_steps = ["评估并处理 warnings，确认是否允许继续发布"]
     else:
         status = "ready"
         recommendation = "ready_for_release"
+        next_steps = ["可以进入构建与发布流程"]
     return {
         "status": status,
         "recommendation": recommendation,
+        "next_steps": next_steps,
         "blocking_issue_count": len(blocking_issues),
         "warning_count": len(warnings),
         "error_section_count": len(error_sections),

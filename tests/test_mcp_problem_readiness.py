@@ -144,6 +144,7 @@ class MpcProblemReadinessTest(unittest.TestCase):
         self.assertEqual(result["summary"]["recommendation"], "ready_for_release")
         self.assertEqual(result["summary"]["blocking_issue_count"], 0)
         self.assertEqual(result["summary"]["warning_count"], 0)
+        self.assertEqual(result["summary"]["next_steps"], ["可以进入构建与发布流程"])
         self.assertEqual(result["details"]["tests"]["sample_count"], 1)
 
     @patch("src.mcp.utils.problem_readiness.get_problem_session")
@@ -181,6 +182,7 @@ class MpcProblemReadinessTest(unittest.TestCase):
         self.assertEqual(result["summary"]["status"], "blocked")
         self.assertEqual(result["summary"]["recommendation"], "fix_blocking_issues")
         self.assertGreater(result["summary"]["blocking_issue_count"], 0)
+        self.assertIn("补齐题面与必需配置后重新检查 readiness", result["summary"]["next_steps"])
 
     @patch("src.mcp.utils.problem_readiness.get_problem_session")
     def test_check_problem_readiness_reports_non_blocking_warnings(self, session_mock):
@@ -233,6 +235,7 @@ class MpcProblemReadinessTest(unittest.TestCase):
         self.assertEqual(result["summary"]["recommendation"], "review_warnings")
         self.assertEqual(result["summary"]["blocking_issue_count"], 0)
         self.assertGreater(result["summary"]["warning_count"], 0)
+        self.assertIn("评估并处理 warnings，确认是否允许继续发布", result["summary"]["next_steps"])
 
     @patch("src.mcp.utils.problem_readiness.get_problem_session")
     def test_check_problem_readiness_ignores_interactor_errors_for_non_interactive_problem(
