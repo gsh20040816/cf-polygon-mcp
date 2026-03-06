@@ -1,5 +1,6 @@
 from typing import Dict, Optional
 
+from src.mcp.utils.common import build_operation_result
 from src.polygon.client import PolygonClient
 from src.mcp.utils.common import get_api_credentials
 
@@ -39,29 +40,45 @@ def get_contest_problems(
                           "1. 比赛ID不正确\n" \
                           "2. 没有访问权限\n" \
                           "3. PIN码错误或缺失"
-            return {
-                "status": "error",
-                "message": error_message,
-                "problems": [],
-            }
+            return build_operation_result(
+                action="get_contest_problems",
+                success=False,
+                message=error_message,
+                contest_id=contest_id,
+                pin=pin,
+                count=0,
+                problems=[],
+            )
 
         result_message = f"成功获取到 {len(problems)} 个题目"
-        return {
-            "status": "success",
-            "message": result_message,
-            "problems": problems,
-        }
-    except ValueError as e:
-        error_message = f"API凭证错误: {str(e)}"
-        return {
-            "status": "error",
-            "message": error_message,
-            "problems": [],
-        }
-    except Exception as e:
-        error_message = f"获取比赛题目失败: {str(e)}"
-        return {
-            "status": "error",
-            "message": error_message,
-            "problems": [],
-        }
+        return build_operation_result(
+            action="get_contest_problems",
+            success=True,
+            message=result_message,
+            contest_id=contest_id,
+            pin=pin,
+            count=len(problems),
+            problems=problems,
+        )
+    except ValueError as exc:
+        return build_operation_result(
+            action="get_contest_problems",
+            success=False,
+            message="API凭证错误",
+            error=exc,
+            contest_id=contest_id,
+            pin=pin,
+            count=0,
+            problems=[],
+        )
+    except Exception as exc:
+        return build_operation_result(
+            action="get_contest_problems",
+            success=False,
+            message="获取比赛题目失败",
+            error=exc,
+            contest_id=contest_id,
+            pin=pin,
+            count=0,
+            problems=[],
+        )

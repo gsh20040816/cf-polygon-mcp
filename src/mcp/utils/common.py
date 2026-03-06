@@ -1,7 +1,7 @@
 import os
 from enum import Enum
 from pathlib import Path
-from typing import Optional, Type
+from typing import Any, Optional, Type
 
 from src.polygon.client import PolygonClient
 
@@ -46,6 +46,79 @@ def get_client() -> PolygonClient:
 def get_problem_session(problem_id: int, pin: Optional[str] = None):
     """创建题目会话。"""
     return get_client().create_problem_session(problem_id, pin)
+
+
+def serialize_problem(problem: Any) -> dict[str, Any]:
+    """把题目对象压平成适合工具返回的结构。"""
+    return {
+        "id": problem.id,
+        "owner": getattr(problem, "owner", None),
+        "name": problem.name,
+        "access_type": problem.accessType.value,
+        "revision": getattr(problem, "revision", None),
+        "latest_package": getattr(problem, "latestPackage", None),
+        "modified": getattr(problem, "modified", None),
+        "contest_letter": getattr(problem, "contestLetter", None),
+    }
+
+
+def serialize_problem_info(info: Any) -> dict[str, Any]:
+    """把 ProblemInfo 压平成字典。"""
+    return {
+        "input_file": info.inputFile,
+        "output_file": info.outputFile,
+        "interactive": info.interactive,
+        "time_limit": info.timeLimit,
+        "memory_limit": info.memoryLimit,
+    }
+
+
+def serialize_statement(statement: Any) -> dict[str, Any]:
+    """把 Statement 压平成字典。"""
+    return {
+        "encoding": statement.encoding,
+        "name": statement.name,
+        "legend": statement.legend,
+        "input": statement.input,
+        "output": statement.output,
+        "scoring": getattr(statement, "scoring", None),
+        "interaction": getattr(statement, "interaction", None),
+        "notes": getattr(statement, "notes", None),
+        "tutorial": getattr(statement, "tutorial", None),
+    }
+
+
+def is_ok_result(result: Any) -> bool:
+    """判断底层返回是否表示成功。"""
+    if not isinstance(result, dict):
+        return True
+    return result.get("status", "OK") in ("OK", "success")
+
+
+def build_operation_result(
+    *,
+    action: str,
+    success: bool,
+    message: str,
+    result: Any = None,
+    error: Optional[Exception] = None,
+    **context: Any,
+) -> dict[str, Any]:
+    """构建统一的工具返回结构。"""
+    payload: dict[str, Any] = {
+        "status": "success" if success else "error",
+        "action": action,
+        "message": message,
+    }
+    if result is not None:
+        payload["result"] = result
+    if error is not None:
+        payload["error"] = str(error)
+        payload["error_type"] = type(error).__name__
+    for key, value in context.items():
+        if value is not None:
+            payload[key] = value
+    return payload
 
 
 def parse_enum(enum_type: Type[Enum], value: str, field_name: str):

@@ -1,6 +1,10 @@
 from typing import Optional
-from src.polygon.client import PolygonClient
-from src.mcp.utils.common import get_api_credentials
+
+from src.mcp.utils.common import (
+    build_operation_result,
+    get_client,
+    serialize_statement,
+)
 
 def save_problem_statement(
     problem_id: int,
@@ -40,13 +44,25 @@ def save_problem_statement(
         ValueError: 当环境变量未设置时抛出
         AccessDeniedException: 当没有足够的访问权限时抛出
     """
+    requested_fields = sorted(
+        field_name
+        for field_name, value in {
+            "name": name,
+            "legend": legend,
+            "input": input,
+            "output": output,
+            "scoring": scoring,
+            "interaction": interaction,
+            "notes": notes,
+            "tutorial": tutorial,
+        }.items()
+        if value is not None
+    )
+
     try:
-        api_key, api_secret = get_api_credentials()
-        
-        client = PolygonClient(api_key, api_secret)
-        session = client.create_problem_session(problem_id, pin)
-        
-        session.save_statement(
+        session = get_client().create_problem_session(problem_id, pin)
+
+        result = session.save_statement(
             lang=lang,
             encoding=encoding,
             name=name,
@@ -58,14 +74,28 @@ def save_problem_statement(
             notes=notes,
             tutorial=tutorial
         )
-        
-        return {
-            "status": "success",
-            "message": f"题目{lang}陈述更新成功",
-        }
-    except Exception as e:
-        return {
-            "status": "error",
-            "message": f"题目{lang}陈述更新失败: {str(e)}",
-            "error": str(e)
-        }
+        statement = session.get_statements().get(lang)
+        return build_operation_result(
+            action="save_problem_statement",
+            success=True,
+            message=f"题目 {lang} 陈述已更新",
+            result=result,
+            problem_id=problem_id,
+            pin=pin,
+            lang=lang,
+            encoding=encoding,
+            requested_fields=requested_fields,
+            statement=serialize_statement(statement) if statement is not None else None,
+        )
+    except Exception as exc:
+        return build_operation_result(
+            action="save_problem_statement",
+            success=False,
+            message=f"题目 {lang} 陈述更新失败",
+            error=exc,
+            problem_id=problem_id,
+            pin=pin,
+            lang=lang,
+            encoding=encoding,
+            requested_fields=requested_fields,
+        )

@@ -1,6 +1,18 @@
 from typing import Optional
 
-from src.mcp.utils.common import get_problem_session
+from src.mcp.utils.common import (
+    build_operation_result,
+    get_problem_session,
+    is_ok_result,
+    serialize_problem,
+)
+
+
+def _get_problem_snapshot(session, problem_id: int):
+    problems = session.client.get_problems(problem_id=problem_id)
+    if not problems:
+        return None
+    return serialize_problem(problems[0])
 
 def update_problem_working_copy(problem_id: int, pin: Optional[str] = None) -> dict:
     """
@@ -16,20 +28,18 @@ def update_problem_working_copy(problem_id: int, pin: Optional[str] = None) -> d
         ValueError: 当环境变量未设置时抛出
         AccessDeniedException: 当没有足够的访问权限时抛出
     """
-    result = get_problem_session(problem_id, pin).update_working_copy()
-    
-    if result.get("status") == "OK":
-        return {
-            "status": "success",
-            "message": "工作副本已更新",
-            "result": result,
-        }
-    else:
-        return {
-            "status": "error",
-            "message": "工作副本更新失败",
-            "result": result,
-        }
+    session = get_problem_session(problem_id, pin)
+    result = session.update_working_copy()
+    success = is_ok_result(result)
+    return build_operation_result(
+        action="update_problem_working_copy",
+        success=success,
+        message="工作副本已更新" if success else "工作副本更新失败",
+        result=result,
+        problem_id=problem_id,
+        pin=pin,
+        problem=_get_problem_snapshot(session, problem_id) if success else None,
+    )
         
 def discard_problem_working_copy(problem_id: int, pin: Optional[str] = None) -> dict:
     """
@@ -45,17 +55,15 @@ def discard_problem_working_copy(problem_id: int, pin: Optional[str] = None) -> 
         ValueError: 当环境变量未设置时抛出
         AccessDeniedException: 当没有足够的访问权限时抛出
     """
-    result = get_problem_session(problem_id, pin).discard_working_copy()
-    
-    if result.get("status") == "OK":
-        return {
-            "status": "success",
-            "message": "工作副本已丢弃",
-            "result": result,
-        }
-    else:
-        return {
-            "status": "error",
-            "message": "工作副本丢弃失败",
-            "result": result,
-        }
+    session = get_problem_session(problem_id, pin)
+    result = session.discard_working_copy()
+    success = is_ok_result(result)
+    return build_operation_result(
+        action="discard_problem_working_copy",
+        success=success,
+        message="工作副本已丢弃" if success else "工作副本丢弃失败",
+        result=result,
+        problem_id=problem_id,
+        pin=pin,
+        problem=_get_problem_snapshot(session, problem_id) if success else None,
+    )

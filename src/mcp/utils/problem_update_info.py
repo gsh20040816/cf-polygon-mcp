@@ -1,6 +1,11 @@
 from typing import Optional
 
-from src.mcp.utils.common import get_problem_session
+from src.mcp.utils.common import (
+    build_operation_result,
+    get_problem_session,
+    is_ok_result,
+    serialize_problem_info,
+)
 
 def update_problem_info(
     problem_id: int,
@@ -29,23 +34,36 @@ def update_problem_info(
         ValueError: 当环境变量未设置时抛出
         AccessDeniedException: 当没有足够的访问权限时抛出
     """
-    result = get_problem_session(problem_id, pin).update_info(
+    requested_changes = {
+        field_name: value
+        for field_name, value in {
+            "input_file": input_file,
+            "output_file": output_file,
+            "interactive": interactive,
+            "time_limit": time_limit,
+            "memory_limit": memory_limit,
+        }.items()
+        if value is not None
+    }
+
+    session = get_problem_session(problem_id, pin)
+    result = session.update_info(
         input_file=input_file,
         output_file=output_file,
         time_limit=time_limit,
         memory_limit=memory_limit,
         interactive=interactive,
     )
-    
-    if result.get("status") == "OK":
-        return {
-            "status": "success",
-            "message": "题目信息更新成功",
-            "result": result,
-        }
-    else:
-        return {
-            "status": "error",
-            "message": "题目信息更新失败",
-            "result": result,
-        }
+
+    success = is_ok_result(result)
+    updated_info = session.get_info() if success else None
+    return build_operation_result(
+        action="update_problem_info",
+        success=success,
+        message="题目信息更新成功" if success else "题目信息更新失败",
+        result=result,
+        problem_id=problem_id,
+        pin=pin,
+        requested_changes=requested_changes,
+        problem_info=serialize_problem_info(updated_info) if updated_info is not None else None,
+    )

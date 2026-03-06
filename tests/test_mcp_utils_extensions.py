@@ -7,14 +7,22 @@ from src.mcp.utils.contest_problems import get_contest_problems
 from src.mcp.utils.problem_content import save_problem_file, save_problem_script
 from src.mcp.utils.problem_extra_validators import get_problem_extra_validators
 from src.mcp.utils.problem_info import get_problem_info
+from src.mcp.utils.problem_save_statement import save_problem_statement
 from src.mcp.utils.problem_sources import save_problem_solution
 from src.mcp.utils.problem_tests_extended import save_problem_test_group
+from src.mcp.utils.problem_update_info import update_problem_info
+from src.mcp.utils.problem_working_copy import (
+    discard_problem_working_copy,
+    update_problem_working_copy,
+)
 from src.polygon.models import (
     AccessType,
     FeedbackPolicy,
     FileType,
     PointsPolicy,
     Problem,
+    ProblemInfo,
+    Statement,
     SolutionTag,
     SourceType,
 )
@@ -170,6 +178,127 @@ class MpcUtilsExtensionsTest(unittest.TestCase):
                 local_path="generator.txt",
             )
 
+    @patch("src.mcp.utils.problem_save_statement.get_client")
+    def test_save_problem_statement_returns_statement_snapshot(self, get_client_mock):
+        statement = Statement(
+            encoding="UTF-8",
+            name="A + B",
+            legend="desc",
+            input="in",
+            output="out",
+        )
+        statements = Mock()
+        statements.get.return_value = statement
+        session = Mock()
+        session.save_statement.return_value = {"saved": True}
+        session.get_statements.return_value = statements
+        client = Mock()
+        client.create_problem_session.return_value = session
+        get_client_mock.return_value = client
+
+        result = save_problem_statement(
+            problem_id=1,
+            lang="english",
+            name="A + B",
+            legend="desc",
+        )
+
+        self.assertEqual(result["status"], "success")
+        self.assertEqual(result["action"], "save_problem_statement")
+        self.assertEqual(result["problem_id"], 1)
+        self.assertEqual(result["lang"], "english")
+        self.assertEqual(result["requested_fields"], ["legend", "name"])
+        self.assertEqual(result["result"], {"saved": True})
+        self.assertEqual(result["statement"]["name"], "A + B")
+        session.get_statements.assert_called_once_with()
+
+    @patch("src.mcp.utils.problem_update_info.get_problem_session")
+    def test_update_problem_info_returns_updated_snapshot(self, session_mock):
+        session = Mock()
+        session.update_info.return_value = {"status": "OK", "result": {"updated": True}}
+        session.get_info.return_value = ProblemInfo(
+            inputFile="stdin",
+            outputFile="stdout",
+            interactive=False,
+            timeLimit=2000,
+            memoryLimit=256,
+        )
+        session_mock.return_value = session
+
+        result = update_problem_info(
+            problem_id=1,
+            input_file="stdin",
+            output_file="stdout",
+            time_limit=2000,
+            memory_limit=256,
+            interactive=False,
+        )
+
+        self.assertEqual(result["status"], "success")
+        self.assertEqual(result["action"], "update_problem_info")
+        self.assertEqual(
+            result["requested_changes"],
+            {
+                "input_file": "stdin",
+                "output_file": "stdout",
+                "time_limit": 2000,
+                "memory_limit": 256,
+                "interactive": False,
+            },
+        )
+        self.assertEqual(result["problem_info"]["time_limit"], 2000)
+        self.assertEqual(result["result"], {"status": "OK", "result": {"updated": True}})
+        session.get_info.assert_called_once_with()
+
+    @patch("src.mcp.utils.problem_working_copy.get_problem_session")
+    def test_update_problem_working_copy_returns_problem_snapshot(self, session_mock):
+        session = Mock()
+        session.update_working_copy.return_value = {"status": "OK"}
+        session.client.get_problems.return_value = [
+            Problem(
+                id=1,
+                owner="owner",
+                name="A + B",
+                accessType=AccessType.OWNER,
+                revision=5,
+                latestPackage=4,
+                modified=True,
+            )
+        ]
+        session_mock.return_value = session
+
+        result = update_problem_working_copy(problem_id=1, pin="1234")
+
+        self.assertEqual(result["status"], "success")
+        self.assertEqual(result["action"], "update_problem_working_copy")
+        self.assertEqual(result["problem"]["revision"], 5)
+        self.assertEqual(result["pin"], "1234")
+        session.client.get_problems.assert_called_once_with(problem_id=1)
+
+    @patch("src.mcp.utils.problem_working_copy.get_problem_session")
+    def test_discard_problem_working_copy_returns_problem_snapshot(self, session_mock):
+        session = Mock()
+        session.discard_working_copy.return_value = {"status": "OK"}
+        session.client.get_problems.return_value = [
+            Problem(
+                id=1,
+                owner="owner",
+                name="A + B",
+                accessType=AccessType.WRITE,
+                revision=6,
+                latestPackage=6,
+                modified=False,
+            )
+        ]
+        session_mock.return_value = session
+
+        result = discard_problem_working_copy(problem_id=1)
+
+        self.assertEqual(result["status"], "success")
+        self.assertEqual(result["action"], "discard_problem_working_copy")
+        self.assertEqual(result["problem"]["modified"], False)
+        self.assertEqual(result["result"], {"status": "OK"})
+
     @patch("builtins.print")
     @patch("src.mcp.utils.contest_problems.PolygonClient")
     @patch("src.mcp.utils.contest_problems.get_api_credentials", return_value=("key", "secret"))
@@ -192,6 +321,8 @@ class MpcUtilsExtensionsTest(unittest.TestCase):
         result = get_contest_problems(contest_id=1000, pin="9999")
 
         self.assertEqual(result["status"], "success")
+        self.assertEqual(result["contest_id"], 1000)
+        self.assertEqual(result["count"], 1)
         self.assertEqual(result["problems"], problems)
         client.create_contest_session.assert_called_once_with(1000, "9999")
         print_mock.assert_not_called()
