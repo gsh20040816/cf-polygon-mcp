@@ -62,6 +62,23 @@ uv run mcp dev main.py
 ```bash
 python -m unittest discover -s tests -v
 ```
+
+## GitHub 自动发版
+
+仓库包含 GitHub Actions 工作流 [publish.yml](.github/workflows/publish.yml)。当代码 `push` 到 `main` 后，工作流会：
+
+- 使用 Python 3.13 安装依赖
+- 运行 `python -m unittest discover -s tests -v`
+- 构建 `sdist` 和 `wheel`
+- 如果 `pyproject.toml` 中的版本尚未发布到 PyPI，则自动发布
+
+要让自动发布生效，需要先在 PyPI 的 Trusted Publisher 中添加这个 GitHub 仓库：
+
+- Owner: `gsh20040816`
+- Repository name: `cf-polygon-mcp`
+- Workflow name: `publish.yml`
+- Environment name: `pypi`
+
 ## 许可证
 
 [AGPL-3.0-or-later](LICENSE)
