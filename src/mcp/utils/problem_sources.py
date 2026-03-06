@@ -1,6 +1,11 @@
 from typing import Optional
 
-from src.mcp.utils.common import get_problem_session, parse_enum
+from src.mcp.utils.common import (
+    get_problem_session,
+    parse_enum,
+    resolve_text_input,
+    resolve_upload_name,
+)
 from src.polygon.models import SolutionTag, SourceType
 
 
@@ -33,21 +38,24 @@ def set_problem_interactor(
 
 def save_problem_solution(
     problem_id: int,
-    name: str,
-    file_content: str,
+    name: Optional[str] = None,
+    file_content: Optional[str] = None,
     pin: Optional[str] = None,
     source_type: Optional[str] = None,
     tag: Optional[str] = None,
     check_existing: Optional[bool] = None,
+    local_path: Optional[str] = None,
 ):
     """保存题目解法文件。"""
+    resolved_name = resolve_upload_name(name, local_path, "name")
+    resolved_content = resolve_text_input(file_content, local_path, "file_content")
     source_type_enum = (
         parse_enum(SourceType, source_type, "source_type") if source_type is not None else None
     )
     tag_enum = parse_enum(SolutionTag, tag, "tag") if tag is not None else None
     return get_problem_session(problem_id, pin).save_solution(
-        name=name,
-        file_content=file_content,
+        name=resolved_name,
+        file_content=resolved_content,
         source_type=source_type_enum,
         tag=tag_enum,
         check_existing=check_existing,

@@ -1,6 +1,11 @@
 from typing import Optional
 
-from src.mcp.utils.common import get_problem_session, parse_enum
+from src.mcp.utils.common import (
+    get_problem_session,
+    parse_enum,
+    resolve_text_input,
+    resolve_upload_name,
+)
 from src.polygon.models import (
     File,
     FileType,
@@ -18,15 +23,18 @@ def get_problem_statement_resources(problem_id: int, pin: Optional[str] = None) 
 
 def save_problem_statement_resource(
     problem_id: int,
-    name: str,
-    file_content: str,
+    name: Optional[str] = None,
+    file_content: Optional[str] = None,
     pin: Optional[str] = None,
     check_existing: Optional[bool] = None,
+    local_path: Optional[str] = None,
 ):
     """保存题目陈述资源文件。"""
+    resolved_name = resolve_upload_name(name, local_path, "name")
+    resolved_content = resolve_text_input(file_content, local_path, "file_content")
     return get_problem_session(problem_id, pin).save_statement_resource(
-        name=name,
-        file_content=file_content,
+        name=resolved_name,
+        file_content=resolved_content,
         check_existing=check_existing,
     )
 
@@ -39,17 +47,20 @@ def get_problem_files(problem_id: int, pin: Optional[str] = None) -> ProblemFile
 def save_problem_file(
     problem_id: int,
     file_type: str,
-    file_name: str,
-    file_content: str,
+    file_name: Optional[str] = None,
+    file_content: Optional[str] = None,
     pin: Optional[str] = None,
     source_type: Optional[str] = None,
     for_types: Optional[str] = None,
     stages: Optional[list[str]] = None,
     assets: Optional[list[str]] = None,
     check_existing: Optional[bool] = None,
+    local_path: Optional[str] = None,
 ):
     """保存题目文件。"""
     file_type_enum = parse_enum(FileType, file_type, "file_type")
+    resolved_name = resolve_upload_name(file_name, local_path, "file_name")
+    resolved_content = resolve_text_input(file_content, local_path, "file_content")
     source_type_enum = (
         parse_enum(SourceType, source_type, "source_type") if source_type is not None else None
     )
@@ -66,8 +77,8 @@ def save_problem_file(
 
     return get_problem_session(problem_id, pin).save_file(
         file_type=file_type_enum,
-        name=file_name,
-        file_content=file_content,
+        name=resolved_name,
+        file_content=resolved_content,
         source_type=source_type_enum,
         for_types=for_types,
         stages=stage_values,
@@ -88,11 +99,16 @@ def view_problem_script(
 def save_problem_script(
     problem_id: int,
     testset: str,
-    source: str,
+    source: Optional[str] = None,
     pin: Optional[str] = None,
+    local_path: Optional[str] = None,
 ):
     """保存题目的测试生成脚本。"""
-    return get_problem_session(problem_id, pin).save_script(testset=testset, source=source)
+    resolved_source = resolve_text_input(source, local_path, "source")
+    return get_problem_session(problem_id, pin).save_script(
+        testset=testset,
+        source=resolved_source,
+    )
 
 
 def get_problem_tags(problem_id: int, pin: Optional[str] = None) -> list[str]:

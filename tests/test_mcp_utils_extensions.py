@@ -1,11 +1,14 @@
+from pathlib import Path
+from tempfile import TemporaryDirectory
 import unittest
 from unittest.mock import Mock, patch
 
-from src.mcp.utils.problem_content import save_problem_file
+from src.mcp.utils.problem_content import save_problem_file, save_problem_script
 from src.mcp.utils.problem_extra_validators import get_problem_extra_validators
 from src.mcp.utils.problem_info import get_problem_info
+from src.mcp.utils.problem_sources import save_problem_solution
 from src.mcp.utils.problem_tests_extended import save_problem_test_group
-from src.polygon.models import FeedbackPolicy, FileType, PointsPolicy, SourceType
+from src.polygon.models import FeedbackPolicy, FileType, PointsPolicy, SolutionTag, SourceType
 
 
 class MpcUtilsExtensionsTest(unittest.TestCase):
@@ -34,6 +37,35 @@ class MpcUtilsExtensionsTest(unittest.TestCase):
             for_types=None,
             stages=["COMPILE"],
             assets=["VALIDATOR"],
+            check_existing=None,
+        )
+
+    @patch("src.mcp.utils.problem_content.get_problem_session")
+    def test_save_problem_file_reads_text_from_local_path(self, session_mock):
+        session = Mock()
+        session.save_file.return_value = {"saved": True}
+        session_mock.return_value = session
+
+        with TemporaryDirectory() as tmpdir:
+            local_file = Path(tmpdir) / "checker.cpp"
+            local_file.write_text("int main() {}\n", encoding="utf-8")
+
+            result = save_problem_file(
+                problem_id=1,
+                file_type="source",
+                local_path=str(local_file),
+                source_type="checker",
+            )
+
+        self.assertEqual(result, {"saved": True})
+        session.save_file.assert_called_once_with(
+            file_type=FileType.SOURCE,
+            name="checker.cpp",
+            file_content="int main() {}\n",
+            source_type=SourceType.CHECKER,
+            for_types=None,
+            stages=None,
+            assets=None,
             check_existing=None,
         )
 
@@ -83,6 +115,41 @@ class MpcUtilsExtensionsTest(unittest.TestCase):
         self.assertEqual(result, ["validator-extra.cpp"])
         session_mock.assert_called_once_with(1, "5678")
         session.get_extra_validators.assert_called_once_with()
+
+    @patch("src.mcp.utils.problem_sources.get_problem_session")
+    def test_save_problem_solution_reads_text_from_local_path(self, session_mock):
+        session = Mock()
+        session.save_solution.return_value = {"saved": True}
+        session_mock.return_value = session
+
+        with TemporaryDirectory() as tmpdir:
+            local_file = Path(tmpdir) / "main.cpp"
+            local_file.write_text("// solution\n", encoding="utf-8")
+
+            result = save_problem_solution(
+                problem_id=1,
+                local_path=str(local_file),
+                source_type="solution",
+                tag="MA",
+            )
+
+        self.assertEqual(result, {"saved": True})
+        session.save_solution.assert_called_once_with(
+            name="main.cpp",
+            file_content="// solution\n",
+            source_type=SourceType.SOLUTION,
+            tag=SolutionTag.MA,
+            check_existing=None,
+        )
+
+    def test_save_problem_script_requires_exactly_one_source_input(self):
+        with self.assertRaisesRegex(ValueError, "source 和 local_path 必须且只能提供一个"):
+            save_problem_script(
+                problem_id=1,
+                testset="tests",
+                source="gen 1",
+                local_path="generator.txt",
+            )
 
 
 if __name__ == "__main__":
