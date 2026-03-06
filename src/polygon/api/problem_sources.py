@@ -162,5 +162,6 @@ def edit_problem_solution_extra_tags(
         problem_id,
         pin,
         params,
+        http_method="POST",
     )
     return _unwrap_result(response)

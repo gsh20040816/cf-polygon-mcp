@@ -11,6 +11,7 @@ from src.polygon.api.problem_discard_working_copy import discard_problem_working
 from src.polygon.api.problem_update_info import update_problem_info
 from src.polygon.api.problem_update_working_copy import update_problem_working_copy
 from src.polygon.api.problem_sources import (
+    edit_problem_solution_extra_tags,
     set_problem_checker,
     set_problem_interactor,
     set_problem_validator,
@@ -206,6 +207,32 @@ class PolygonApiExtensionsTest(unittest.TestCase):
         args, kwargs = request_mock.call_args
         self.assertEqual(args[3], "problem.setInteractor")
         self.assertEqual(args[6]["interactor"], "interactor.cpp")
+        self.assertEqual(kwargs["http_method"], "POST")
+
+    @patch(
+        "src.polygon.api.problem_sources.make_problem_request",
+        return_value={"status": "OK", "result": {"edited": True}},
+    )
+    def test_edit_problem_solution_extra_tags_uses_post(self, request_mock):
+        result = edit_problem_solution_extra_tags(
+            "key",
+            "secret",
+            "https://polygon.codeforces.com/api/",
+            1,
+            AccessType.OWNER,
+            "main.cpp",
+            remove=False,
+            testset="tests",
+            tag=SolutionTag.WA,
+        )
+
+        self.assertEqual(result, {"edited": True})
+        args, kwargs = request_mock.call_args
+        self.assertEqual(args[3], "problem.editSolutionExtraTags")
+        self.assertEqual(args[6]["name"], "main.cpp")
+        self.assertEqual(args[6]["remove"], "false")
+        self.assertEqual(args[6]["testset"], "tests")
+        self.assertEqual(args[6]["tag"], "WA")
         self.assertEqual(kwargs["http_method"], "POST")
 
     def test_save_problem_solution_rejects_non_solution_source_type(self):
