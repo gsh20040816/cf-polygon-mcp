@@ -52,6 +52,7 @@ def update_problem_info(
         
     response = make_problem_request(
         api_key, api_secret, base_url,
-        "problem.updateInfo", problem_id, pin, params
+        "problem.updateInfo", problem_id, pin, params,
+        http_method="POST",
     )
-    return response 
+    return response

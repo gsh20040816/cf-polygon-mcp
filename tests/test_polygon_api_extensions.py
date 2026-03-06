@@ -7,6 +7,7 @@ from src.polygon.api.problem_extra_validators import get_problem_extra_validator
 from src.polygon.api.problem_packages import commit_problem_changes
 from src.polygon.api.problem_save_statement import save_problem_statement
 from src.polygon.api.problem_sources import save_problem_solution
+from src.polygon.api.problem_update_info import update_problem_info
 from src.polygon.models import AccessType, FileType, SolutionTag, SourceType
 from src.polygon.utils.client_utils import make_api_request
 
@@ -153,6 +154,31 @@ class PolygonApiExtensionsTest(unittest.TestCase):
             1,
             "9999",
         )
+
+    @patch(
+        "src.polygon.api.problem_update_info.make_problem_request",
+        return_value={"status": "OK", "result": {"updated": True}},
+    )
+    def test_update_problem_info_uses_post(self, request_mock):
+        result = update_problem_info(
+            "key",
+            "secret",
+            "https://polygon.codeforces.com/api/",
+            1,
+            None,
+            AccessType.OWNER,
+            input_file="stdin",
+            output_file="stdout",
+            interactive=False,
+        )
+
+        self.assertEqual(result, {"status": "OK", "result": {"updated": True}})
+        args, kwargs = request_mock.call_args
+        self.assertEqual(args[3], "problem.updateInfo")
+        self.assertEqual(args[6]["inputFile"], "stdin")
+        self.assertEqual(args[6]["outputFile"], "stdout")
+        self.assertEqual(args[6]["interactive"], "false")
+        self.assertEqual(kwargs["http_method"], "POST")
 
     @patch("builtins.print")
     @patch(
