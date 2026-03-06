@@ -36,6 +36,7 @@ from src.mcp.utils.problem_packages import (
 )
 from src.mcp.utils.problem_package_workflow import build_problem_package_and_wait
 from src.mcp.utils.problem_readiness import check_problem_readiness
+from src.mcp.utils.problem_release import prepare_problem_release
 from src.mcp.utils.problem_solutions import get_problem_solutions
 from src.mcp.utils.problem_solution_view import view_problem_solution
 from src.mcp.utils.problem_sources import (
@@ -119,6 +120,7 @@ mcp.tool()(download_problem_package)
 mcp.tool()(build_problem_package)
 mcp.tool()(build_problem_package_and_wait)
 mcp.tool()(check_problem_readiness)
+mcp.tool()(prepare_problem_release)
 mcp.tool()(get_contest_problems)
 mcp.tool()(update_problem_info)
 mcp.tool()(update_problem_working_copy)
