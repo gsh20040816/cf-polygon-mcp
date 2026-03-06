@@ -29,7 +29,8 @@ def update_problem_working_copy(
     
     response = make_problem_request(
         api_key, api_secret, base_url,
-        "problem.updateWorkingCopy", problem_id, pin
+        "problem.updateWorkingCopy", problem_id, pin,
+        http_method="POST",
     )
     
     return response 

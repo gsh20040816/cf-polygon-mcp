@@ -29,7 +29,8 @@ def discard_problem_working_copy(
     
     response = make_problem_request(
         api_key, api_secret, base_url,
-        "problem.discardWorkingCopy", problem_id, pin
+        "problem.discardWorkingCopy", problem_id, pin,
+        http_method="POST",
     )
     
     return response 
