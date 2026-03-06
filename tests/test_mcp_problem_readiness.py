@@ -4,6 +4,8 @@ from unittest.mock import Mock, patch
 
 from src.mcp.utils.problem_readiness import check_problem_readiness
 from src.polygon.models import (
+    AccessType,
+    File,
     Package,
     PackageState,
     PackageType,
@@ -45,10 +47,43 @@ def _solution(name: str, tag: SolutionTag) -> Solution:
     )
 
 
+def _problem_meta(
+    revision: int = 1,
+    latest_package: int | None = 1,
+    modified: bool = True,
+):
+    problem = Mock()
+    problem.id = 1
+    problem.name = "A + B"
+    problem.accessType = AccessType.OWNER
+    problem.revision = revision
+    problem.latestPackage = latest_package
+    problem.modified = modified
+    return problem
+
+
+def _source_file(name: str):
+    return File(
+        name=name,
+        modificationTimeSeconds=datetime(2024, 1, 1, 0, 0, 1),
+        length=100,
+        sourceType=SourceType.MAIN,
+    )
+
+
+def _problem_files(*source_names: str):
+    files = Mock()
+    files.resourceFiles = []
+    files.sourceFiles = [_source_file(name) for name in source_names]
+    files.auxFiles = []
+    return files
+
+
 class MpcProblemReadinessTest(unittest.TestCase):
     @patch("src.mcp.utils.problem_readiness.get_problem_session")
     def test_check_problem_readiness_reports_ready_problem(self, session_mock):
         session = Mock()
+        session.client.get_problems.return_value = [_problem_meta(modified=False)]
         session.get_info.return_value = ProblemInfo(
             inputFile="input.txt",
             outputFile="output.txt",
@@ -70,8 +105,22 @@ class MpcProblemReadinessTest(unittest.TestCase):
         session.get_validator.return_value = "validator.cpp"
         session.get_checker.return_value = "checker.cpp"
         session.get_interactor.return_value = ""
+        session.get_extra_validators.return_value = ["validator-extra.cpp"]
+        session.get_files.return_value = _problem_files(
+            "validator.cpp",
+            "checker.cpp",
+            "validator-extra.cpp",
+        )
         session.get_tests.return_value = [
-            Test(index=1, manual=True, input="1 2", useInStatements=True),
+            Test(
+                index=1,
+                manual=True,
+                input="1 2",
+                useInStatements=True,
+                inputForStatement="1 2",
+                outputForStatement="3",
+                verifyInputOutputForStatements=True,
+            ),
         ]
         session.get_solutions.return_value = [
             _solution("main.cpp", SolutionTag.MA),
@@ -93,6 +142,7 @@ class MpcProblemReadinessTest(unittest.TestCase):
     @patch("src.mcp.utils.problem_readiness.get_problem_session")
     def test_check_problem_readiness_reports_blocking_issues(self, session_mock):
         session = Mock()
+        session.client.get_problems.return_value = [_problem_meta()]
         session.get_info.return_value = ProblemInfo(
             inputFile="input.txt",
             outputFile="output.txt",
@@ -104,6 +154,8 @@ class MpcProblemReadinessTest(unittest.TestCase):
         session.get_validator.return_value = ""
         session.get_checker.return_value = ""
         session.get_interactor.return_value = ""
+        session.get_extra_validators.return_value = []
+        session.get_files.return_value = _problem_files()
         session.get_tests.return_value = []
         session.get_solutions.return_value = []
         session.get_packages.return_value = []
@@ -123,6 +175,7 @@ class MpcProblemReadinessTest(unittest.TestCase):
     @patch("src.mcp.utils.problem_readiness.get_problem_session")
     def test_check_problem_readiness_reports_non_blocking_warnings(self, session_mock):
         session = Mock()
+        session.client.get_problems.return_value = [_problem_meta(modified=False, latest_package=None)]
         session.get_info.return_value = ProblemInfo(
             inputFile="stdin",
             outputFile="stdout",
@@ -144,6 +197,8 @@ class MpcProblemReadinessTest(unittest.TestCase):
         session.get_validator.return_value = "validator.cpp"
         session.get_checker.return_value = ""
         session.get_interactor.return_value = "interactor.cpp"
+        session.get_extra_validators.return_value = []
+        session.get_files.return_value = _problem_files("validator.cpp", "interactor.cpp")
         session.get_tests.return_value = [
             Test(index=1, manual=True, input="1 2", useInStatements=False),
         ]
@@ -164,6 +219,71 @@ class MpcProblemReadinessTest(unittest.TestCase):
         self.assertIn("缺少错误解或边界解，校验覆盖可能不足", result["warnings"])
         self.assertIn("未配置 validator 测试", result["warnings"])
         self.assertIn("还没有 READY 状态的题目包", result["warnings"])
+
+    @patch("src.mcp.utils.problem_readiness.get_problem_session")
+    def test_check_problem_readiness_reports_local_workflow_gaps(self, session_mock):
+        session = Mock()
+        session.client.get_problems.return_value = [_problem_meta()]
+        session.get_info.return_value = ProblemInfo(
+            inputFile="stdin",
+            outputFile="stdout",
+            interactive=True,
+            timeLimit=2000,
+            memoryLimit=256,
+        )
+        session.get_statements.return_value = _StatementMap(
+            {
+                "english": Statement(
+                    encoding="utf-8",
+                    name="Interactive",
+                    legend="desc",
+                    input="in",
+                    output="out",
+                    scoring=None,
+                )
+            }
+        )
+        session.get_validator.return_value = "validator.cpp"
+        session.get_checker.return_value = "checker.cpp"
+        session.get_interactor.return_value = "interactor.cpp"
+        session.get_extra_validators.return_value = ["validator-extra.cpp"]
+        session.get_files.return_value = _problem_files("validator.cpp", "checker.cpp")
+        session.get_tests.return_value = [
+            Test(
+                index=1,
+                manual=False,
+                useInStatements=True,
+                inputForStatement="1",
+                verifyInputOutputForStatements=False,
+                points=30,
+            )
+        ]
+        session.view_script.return_value = b""
+        session.get_solutions.return_value = [
+            _solution("main.cpp", SolutionTag.MA),
+            _solution("wa.cpp", SolutionTag.WA),
+        ]
+        session.get_validator_tests.return_value = [Mock()]
+        session.get_checker_tests.return_value = [Mock()]
+        session.get_packages.return_value = [_ready_package()]
+        session.get_general_tutorial.return_value = "tutorial"
+        session_mock.return_value = session
+
+        result = check_problem_readiness(problem_id=1)
+
+        self.assertFalse(result["ready"])
+        self.assertIn("english 题面缺少交互协议（interaction）", result["blocking_issues"])
+        self.assertIn(
+            "以下已配置源码文件不存在于题目源文件列表中: interactor: interactor.cpp, extra validator: validator-extra.cpp",
+            result["blocking_issues"],
+        )
+        self.assertIn("以下样例缺少题面输出展示内容: 1", result["warnings"])
+        self.assertIn("以下样例未启用题面输入输出校验: 1", result["warnings"])
+        self.assertIn("测试集 tests 存在生成测试，但生成脚本为空", result["warnings"])
+        self.assertIn(
+            "题目存在带分测试，但以下题面缺少 scoring 字段: english",
+            result["warnings"],
+        )
 
 
 if __name__ == "__main__":

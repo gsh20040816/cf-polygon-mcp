@@ -11,6 +11,21 @@ def _is_failed_response(result: Any) -> bool:
     return isinstance(result, dict) and result.get("status") == "FAILED"
 
 
+def _get_problem_snapshot(session: Any) -> dict[str, Any]:
+    problems = session.client.get_problems(problem_id=session.problem_id)
+    if not problems:
+        raise ValueError(f"无法获取题目 {session.problem_id} 的元数据")
+    problem = problems[0]
+    return {
+        "id": problem.id,
+        "name": problem.name,
+        "access_type": problem.accessType.value,
+        "revision": problem.revision,
+        "latest_package": problem.latestPackage,
+        "modified": problem.modified,
+    }
+
+
 def prepare_problem_release(
     problem_id: int,
     pin: Optional[str] = None,
@@ -69,6 +84,13 @@ def prepare_problem_release(
             "build_result": build_result,
         }
 
+    release_warnings: list[str] = []
+    pre_commit_snapshot = None
+    try:
+        pre_commit_snapshot = _get_problem_snapshot(session)
+    except Exception as exc:
+        release_warnings.append(f"提交前题目快照获取失败: {exc}")
+
     commit_result = session.commit_changes(
         minor_changes=minor_changes,
         message=message,
@@ -83,6 +105,24 @@ def prepare_problem_release(
             "commit_result": commit_result,
         }
 
+    post_commit_snapshot = None
+    try:
+        post_commit_snapshot = _get_problem_snapshot(session)
+    except Exception as exc:
+        release_warnings.append(f"提交后题目快照获取失败: {exc}")
+
+    if post_commit_snapshot is not None and post_commit_snapshot.get("modified"):
+        release_warnings.append("提交后题目仍处于 modified 状态，可能还有未提交改动")
+
+    package_revision = build_result.get("package", {}).get("revision")
+    committed_revision = (
+        post_commit_snapshot.get("revision") if post_commit_snapshot is not None else None
+    )
+    if package_revision is not None and committed_revision is not None and package_revision != committed_revision:
+        release_warnings.append(
+            f"构建包 revision={package_revision}，提交后题目 revision={committed_revision}，请确认发布的是预期版本"
+        )
+
     return {
         "status": "success",
         "message": "题目发布流程已完成",
@@ -90,4 +130,7 @@ def prepare_problem_release(
         "readiness": readiness,
         "build_result": build_result,
         "commit_result": commit_result,
+        "release_warnings": release_warnings,
+        "pre_commit_snapshot": pre_commit_snapshot,
+        "post_commit_snapshot": post_commit_snapshot,
     }

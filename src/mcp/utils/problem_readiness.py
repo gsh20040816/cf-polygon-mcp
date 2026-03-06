@@ -17,6 +17,21 @@ def _append_check_error(
     details[section] = {"status": "error", "error": str(exc)}
 
 
+def _has_text(value: Optional[str]) -> bool:
+    return bool(value and value.strip())
+
+
+def _serialize_problem(problem: Any) -> dict[str, Any]:
+    return {
+        "id": problem.id,
+        "name": problem.name,
+        "access_type": problem.accessType.value,
+        "revision": problem.revision,
+        "latest_package": problem.latestPackage,
+        "modified": problem.modified,
+    }
+
+
 def check_problem_readiness(
     problem_id: int,
     pin: Optional[str] = None,
@@ -32,6 +47,12 @@ def check_problem_readiness(
     blocking_issues: list[str] = []
     warnings: list[str] = []
     details: dict[str, Any] = {"problem_id": problem_id, "testset": testset}
+    statements: dict[str, Any] = {}
+    validator = ""
+    checker = ""
+    interactor = ""
+    extra_validators: list[str] = []
+    info = None
 
     try:
         info = session.get_info()
@@ -52,7 +73,14 @@ def check_problem_readiness(
             blocking_issues.append("内存限制必须大于 0")
     except Exception as exc:
         _append_check_error("题目信息", exc, blocking_issues, details)
-        info = None
+
+    try:
+        problems = session.client.get_problems(problem_id=problem_id)
+        if not problems:
+            raise ValueError(f"无法获取题目 {problem_id} 的元数据")
+        details["problem"] = _serialize_problem(problems[0])
+    except Exception as exc:
+        _append_check_error("题目元数据", exc, blocking_issues, details)
 
     try:
         statements = session.get_statements().as_dict()
@@ -75,6 +103,10 @@ def check_problem_readiness(
                     blocking_issues.append(
                         f"{lang} 题面缺少字段: {', '.join(missing_fields)}"
                     )
+                if info is not None and info.interactive and not _has_text(statement.interaction):
+                    blocking_issues.append(f"{lang} 题面缺少交互协议（interaction）")
+                if info is not None and not info.interactive and _has_text(statement.interaction):
+                    warnings.append(f"{lang} 题面设置了 interaction，但当前题目不是交互题")
     except Exception as exc:
         _append_check_error("题面", exc, blocking_issues, details)
 
@@ -94,7 +126,6 @@ def check_problem_readiness(
             warnings.append("未显式设置 checker，将依赖 Polygon 默认比较器")
     except Exception as exc:
         _append_check_error("checker", exc, blocking_issues, details)
-        checker = None
 
     try:
         interactor = session.get_interactor()
@@ -107,17 +138,105 @@ def check_problem_readiness(
         _append_check_error("interactor", exc, blocking_issues, details)
 
     try:
+        extra_validators = session.get_extra_validators()
+        details["extra_validators"] = {
+            "count": len(extra_validators),
+            "names": extra_validators,
+        }
+    except Exception as exc:
+        _append_check_error("额外 validator", exc, blocking_issues, details)
+
+    try:
+        files = session.get_files()
+        source_file_names = {file.name for file in files.sourceFiles}
+        missing_references = []
+        for source_name, label in (
+            (validator, "validator"),
+            (checker, "checker"),
+            (interactor, "interactor"),
+        ):
+            if source_name and source_name not in source_file_names:
+                missing_references.append(f"{label}: {source_name}")
+        for source_name in extra_validators:
+            if source_name not in source_file_names:
+                missing_references.append(f"extra validator: {source_name}")
+
+        details["files"] = {
+            "resource_count": len(files.resourceFiles),
+            "source_count": len(files.sourceFiles),
+            "aux_count": len(files.auxFiles),
+            "missing_references": missing_references,
+        }
+        if missing_references:
+            blocking_issues.append(
+                "以下已配置源码文件不存在于题目源文件列表中: "
+                + ", ".join(missing_references)
+            )
+    except Exception as exc:
+        _append_check_error("题目文件", exc, blocking_issues, details)
+
+    try:
         tests = session.get_tests(testset=testset)
-        statement_samples = sum(1 for test in tests if test.useInStatements)
+        statement_samples = [test for test in tests if test.useInStatements]
+        generated_tests = [test for test in tests if not test.manual]
+        samples_missing_input = [
+            test.index for test in statement_samples if not _has_text(test.inputForStatement)
+        ]
+        samples_missing_output = [
+            test.index for test in statement_samples if not _has_text(test.outputForStatement)
+        ]
+        samples_without_verification = [
+            test.index
+            for test in statement_samples
+            if test.verifyInputOutputForStatements is not True
+        ]
+        tests_with_points = [test.index for test in tests if test.points is not None]
         details["tests"] = {
             "count": len(tests),
             "manual_count": sum(1 for test in tests if test.manual),
-            "sample_count": statement_samples,
+            "generated_count": len(generated_tests),
+            "sample_count": len(statement_samples),
+            "samples_missing_input_for_statement": samples_missing_input,
+            "samples_missing_output_for_statement": samples_missing_output,
+            "samples_without_statement_verification": samples_without_verification,
+            "tests_with_points": tests_with_points,
         }
         if not tests:
             blocking_issues.append(f"测试集 {testset} 中没有测试")
-        elif statement_samples == 0:
+        elif not statement_samples:
             warnings.append(f"测试集 {testset} 中没有用于题面的样例")
+        if samples_missing_input:
+            warnings.append(
+                f"以下样例缺少题面输入展示内容: {', '.join(map(str, samples_missing_input))}"
+            )
+        if samples_missing_output:
+            warnings.append(
+                f"以下样例缺少题面输出展示内容: {', '.join(map(str, samples_missing_output))}"
+            )
+        if samples_without_verification:
+            warnings.append(
+                "以下样例未启用题面输入输出校验: "
+                + ", ".join(map(str, samples_without_verification))
+            )
+        if tests_with_points and statements:
+            missing_scoring_languages = [
+                lang for lang, statement in statements.items() if not _has_text(statement.scoring)
+            ]
+            details["statements"]["missing_scoring_languages"] = missing_scoring_languages
+            if missing_scoring_languages:
+                warnings.append(
+                    "题目存在带分测试，但以下题面缺少 scoring 字段: "
+                    + ", ".join(missing_scoring_languages)
+                )
+        if generated_tests:
+            script = session.view_script(testset)
+            script_text = script.decode("utf-8", errors="ignore") if isinstance(script, bytes) else str(script)
+            details["script"] = {
+                "generated_test_count": len(generated_tests),
+                "present": _has_text(script_text),
+            }
+            if not _has_text(script_text):
+                warnings.append(f"测试集 {testset} 存在生成测试，但生成脚本为空")
     except Exception as exc:
         _append_check_error("测试", exc, blocking_issues, details)
 
