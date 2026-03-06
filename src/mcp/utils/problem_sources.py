@@ -49,9 +49,11 @@ def save_problem_solution(
     """保存题目解法文件。"""
     resolved_name = resolve_upload_name(name, local_path, "name")
     resolved_content = resolve_text_input(file_content, local_path, "file_content")
-    source_type_enum = (
-        parse_enum(SourceType, source_type, "source_type") if source_type is not None else None
-    )
+    source_type_enum = None
+    if source_type is not None:
+        parsed_source_type = parse_enum(SourceType, source_type, "source_type")
+        if parsed_source_type != SourceType.SOLUTION:
+            raise ValueError("save_problem_solution 只支持 solution 类型，source_type 可省略")
     tag_enum = parse_enum(SolutionTag, tag, "tag") if tag is not None else None
     return get_problem_session(problem_id, pin).save_solution(
         name=resolved_name,

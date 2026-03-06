@@ -4,7 +4,8 @@ from unittest.mock import Mock, patch
 from src.polygon.api.problem_content import save_problem_file
 from src.polygon.api.problem_extra_validators import get_problem_extra_validators
 from src.polygon.api.problem_packages import commit_problem_changes
-from src.polygon.models import AccessType, FileType
+from src.polygon.api.problem_sources import save_problem_solution
+from src.polygon.models import AccessType, FileType, SolutionTag, SourceType
 from src.polygon.utils.client_utils import make_api_request
 
 
@@ -89,6 +90,44 @@ class PolygonApiExtensionsTest(unittest.TestCase):
         args, _ = request_mock.call_args
         self.assertEqual(args[6]["minorChanges"], "true")
         self.assertEqual(args[6]["message"], "sync docs")
+
+    @patch(
+        "src.polygon.api.problem_sources.make_problem_request",
+        return_value={"status": "OK", "result": {"saved": True}},
+    )
+    def test_save_problem_solution_omits_source_type_parameter(self, request_mock):
+        result = save_problem_solution(
+            "key",
+            "secret",
+            "https://polygon.codeforces.com/api/",
+            1,
+            AccessType.OWNER,
+            "wa.cpp",
+            "int main() {}",
+            source_type=SourceType.SOLUTION,
+            tag=SolutionTag.WA,
+            check_existing=True,
+        )
+
+        self.assertEqual(result, {"saved": True})
+        args, kwargs = request_mock.call_args
+        self.assertEqual(kwargs["http_method"], "POST")
+        self.assertNotIn("sourceType", args[6])
+        self.assertEqual(args[6]["tag"], "WA")
+        self.assertEqual(args[6]["checkExisting"], "true")
+
+    def test_save_problem_solution_rejects_non_solution_source_type(self):
+        with self.assertRaisesRegex(ValueError, "只接受 solution 类型"):
+            save_problem_solution(
+                "key",
+                "secret",
+                "https://polygon.codeforces.com/api/",
+                1,
+                AccessType.OWNER,
+                "wa.cpp",
+                "int main() {}",
+                source_type=SourceType.CHECKER,
+            )
 
     @patch(
         "src.polygon.api.problem_extra_validators.make_problem_request",

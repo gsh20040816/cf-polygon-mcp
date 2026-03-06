@@ -137,10 +137,20 @@ class MpcUtilsExtensionsTest(unittest.TestCase):
         session.save_solution.assert_called_once_with(
             name="main.cpp",
             file_content="// solution\n",
-            source_type=SourceType.SOLUTION,
+            source_type=None,
             tag=SolutionTag.MA,
             check_existing=None,
         )
+
+    def test_save_problem_solution_rejects_non_solution_source_type(self):
+        with self.assertRaisesRegex(ValueError, "只支持 solution 类型"):
+            save_problem_solution(
+                problem_id=1,
+                name="wa.cpp",
+                file_content="int main() {}",
+                source_type="checker",
+                tag="WA",
+            )
 
     def test_save_problem_script_requires_exactly_one_source_input(self):
         with self.assertRaisesRegex(ValueError, "source 和 local_path 必须且只能提供一个"):

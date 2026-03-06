@@ -95,12 +95,13 @@ def save_problem_solution(
 ):
     check_write_access(access_type)
 
+    if source_type is not None and source_type != SourceType.SOLUTION:
+        raise ValueError("save_problem_solution 只接受 solution 类型的 source_type")
+
     params = {
         "name": name,
         "file": file_content,
     }
-    if source_type is not None:
-        params["sourceType"] = source_type.value
     if tag is not None:
         params["tag"] = tag.value
     if check_existing is not None:
