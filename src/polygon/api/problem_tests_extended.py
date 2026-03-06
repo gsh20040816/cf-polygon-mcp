@@ -428,5 +428,6 @@ def save_problem_test_group(
         problem_id,
         pin,
         params,
+        http_method="POST",
     )
     return _unwrap_result(response)

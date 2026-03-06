@@ -10,6 +10,7 @@ from src.polygon.api.problem_sources import save_problem_solution
 from src.polygon.api.problem_tests_extended import (
     enable_problem_groups,
     enable_problem_points,
+    save_problem_test_group,
     set_problem_test_group,
 )
 from src.polygon.api.problem_discard_working_copy import discard_problem_working_copy
@@ -301,6 +302,27 @@ class PolygonApiExtensionsTest(unittest.TestCase):
         args, kwargs = request_mock.call_args
         self.assertEqual(args[3], "problem.enablePoints")
         self.assertEqual(args[6]["enable"], "false")
+        self.assertEqual(kwargs["http_method"], "POST")
+
+    @patch(
+        "src.polygon.api.problem_tests_extended.make_problem_request",
+        return_value={"status": "OK", "result": {"saved": True}},
+    )
+    def test_save_problem_test_group_uses_post(self, request_mock):
+        result = save_problem_test_group(
+            "key",
+            "secret",
+            "https://polygon.codeforces.com/api/",
+            1,
+            AccessType.OWNER,
+            testset="tests",
+            group="samples",
+        )
+
+        self.assertEqual(result, {"saved": True})
+        args, kwargs = request_mock.call_args
+        self.assertEqual(args[3], "problem.saveTestGroup")
+        self.assertEqual(args[6]["group"], "samples")
         self.assertEqual(kwargs["http_method"], "POST")
 
     def test_save_problem_solution_rejects_non_solution_source_type(self):
