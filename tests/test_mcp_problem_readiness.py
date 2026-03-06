@@ -198,7 +198,7 @@ class MpcProblemReadinessTest(unittest.TestCase):
         session.get_checker.return_value = ""
         session.get_interactor.return_value = "interactor.cpp"
         session.get_extra_validators.return_value = []
-        session.get_files.return_value = _problem_files("validator.cpp", "interactor.cpp")
+        session.get_files.return_value = _problem_files("validator.cpp")
         session.get_tests.return_value = [
             Test(index=1, manual=True, input="1 2", useInStatements=False),
         ]
@@ -219,6 +219,55 @@ class MpcProblemReadinessTest(unittest.TestCase):
         self.assertIn("缺少错误解或边界解，校验覆盖可能不足", result["warnings"])
         self.assertIn("未配置 validator 测试", result["warnings"])
         self.assertIn("还没有 READY 状态的题目包", result["warnings"])
+
+    @patch("src.mcp.utils.problem_readiness.get_problem_session")
+    def test_check_problem_readiness_ignores_interactor_errors_for_non_interactive_problem(
+        self,
+        session_mock,
+    ):
+        session = Mock()
+        session.client.get_problems.return_value = [_problem_meta(modified=False)]
+        session.get_info.return_value = ProblemInfo(
+            inputFile="stdin",
+            outputFile="stdout",
+            interactive=False,
+            timeLimit=1000,
+            memoryLimit=256,
+        )
+        session.get_statements.return_value = _StatementMap(
+            {
+                "english": Statement(
+                    encoding="utf-8",
+                    name="sum",
+                    legend="desc",
+                    input="in",
+                    output="out",
+                )
+            }
+        )
+        session.get_validator.return_value = "validator.cpp"
+        session.get_checker.return_value = "checker.cpp"
+        session.get_interactor.side_effect = RuntimeError("not interactive")
+        session.get_extra_validators.return_value = []
+        session.get_files.return_value = _problem_files("validator.cpp", "checker.cpp")
+        session.get_tests.return_value = [
+            Test(index=1, manual=True, input="1 2", useInStatements=True),
+        ]
+        session.get_solutions.return_value = [
+            _solution("main.cpp", SolutionTag.MA),
+            _solution("wa.cpp", SolutionTag.WA),
+        ]
+        session.get_validator_tests.return_value = [Mock()]
+        session.get_checker_tests.return_value = [Mock()]
+        session.get_packages.return_value = [_ready_package()]
+        session.get_general_tutorial.return_value = "tutorial"
+        session_mock.return_value = session
+
+        result = check_problem_readiness(problem_id=1)
+
+        self.assertTrue(result["ready"])
+        self.assertNotIn("interactor 检查失败: not interactive", result["blocking_issues"])
+        self.assertEqual(result["details"]["interactor"]["status"], "ignored")
 
     @patch("src.mcp.utils.problem_readiness.get_problem_session")
     def test_check_problem_readiness_reports_local_workflow_gaps(self, session_mock):

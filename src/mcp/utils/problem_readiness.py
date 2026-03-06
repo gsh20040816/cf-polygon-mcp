@@ -135,7 +135,15 @@ def check_problem_readiness(
         if info is not None and not info.interactive and interactor:
             warnings.append("当前题目不是交互题，但设置了 interactor")
     except Exception as exc:
-        _append_check_error("interactor", exc, blocking_issues, details)
+        if info is not None and not info.interactive:
+            interactor = ""
+            details["interactor"] = {
+                "status": "ignored",
+                "reason": "problem is not interactive",
+                "error": str(exc),
+            }
+        else:
+            _append_check_error("interactor", exc, blocking_issues, details)
 
     try:
         extra_validators = session.get_extra_validators()
@@ -153,10 +161,11 @@ def check_problem_readiness(
         for source_name, label in (
             (validator, "validator"),
             (checker, "checker"),
-            (interactor, "interactor"),
         ):
             if source_name and source_name not in source_file_names:
                 missing_references.append(f"{label}: {source_name}")
+        if info is not None and info.interactive and interactor and interactor not in source_file_names:
+            missing_references.append(f"interactor: {interactor}")
         for source_name in extra_validators:
             if source_name not in source_file_names:
                 missing_references.append(f"extra validator: {source_name}")
