@@ -39,8 +39,17 @@ class MpcPackageWorkflowTest(unittest.TestCase):
         )
 
         self.assertEqual(result["status"], "success")
+        self.assertEqual(result["action"], "build_problem_package_and_wait")
+        self.assertEqual(result["request"]["problem_id"], 1)
+        self.assertEqual(result["request"]["full"], True)
+        self.assertEqual(result["request"]["verify"], True)
+        self.assertEqual(result["matched_by"], "new_package")
         self.assertEqual(result["package"]["id"], 2)
         self.assertEqual(result["package"]["state"], "READY")
+        self.assertEqual(
+            [item["state"] for item in result["package_history"]],
+            ["PENDING", "READY"],
+        )
         session.build_package.assert_called_once_with(full=True, verify=True)
 
     @patch("src.mcp.utils.problem_package_workflow.time.sleep")
@@ -64,6 +73,8 @@ class MpcPackageWorkflowTest(unittest.TestCase):
         )
 
         self.assertEqual(result["status"], "error")
+        self.assertEqual(result["matched_by"], "package_id")
+        self.assertEqual(result["target_package_id"], 7)
         self.assertEqual(result["package"]["id"], 7)
         self.assertEqual(result["package"]["state"], "FAILED")
 
@@ -92,6 +103,9 @@ class MpcPackageWorkflowTest(unittest.TestCase):
             )
 
         self.assertEqual(result["status"], "timeout")
+        self.assertEqual(result["action"], "build_problem_package_and_wait")
+        self.assertEqual(result["target_package_id"], None)
+        self.assertEqual(result["package_history"], [])
         self.assertIsNone(result["package"])
 
 

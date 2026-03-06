@@ -54,6 +54,23 @@ class MpcProblemReleaseTest(unittest.TestCase):
         )
 
         self.assertEqual(result["status"], "success")
+        self.assertEqual(result["action"], "prepare_problem_release")
+        self.assertEqual(result["stage"], "completed")
+        self.assertEqual(result["can_proceed"], True)
+        self.assertEqual(
+            result["release_options"],
+            {
+                "testset": "tests",
+                "full": True,
+                "verify": True,
+                "timeout_seconds": 1800,
+                "poll_interval_seconds": 5.0,
+                "message": "release",
+                "minor_changes": True,
+                "allow_warnings": False,
+                "force": False,
+            },
+        )
         session.update_working_copy.assert_called_once_with()
         readiness_mock.assert_called_once_with(problem_id=1, pin=None, testset="tests")
         build_mock.assert_called_once()
@@ -83,6 +100,9 @@ class MpcProblemReleaseTest(unittest.TestCase):
         result = prepare_problem_release(problem_id=1)
 
         self.assertEqual(result["status"], "blocked")
+        self.assertEqual(result["stage"], "readiness")
+        self.assertEqual(result["can_proceed"], False)
+        self.assertEqual(result["decision"], "blocking_issues")
         build_mock.assert_not_called()
         session.commit_changes.assert_not_called()
 
@@ -107,6 +127,8 @@ class MpcProblemReleaseTest(unittest.TestCase):
         result = prepare_problem_release(problem_id=1)
 
         self.assertEqual(result["status"], "blocked")
+        self.assertEqual(result["stage"], "readiness")
+        self.assertEqual(result["decision"], "warnings_not_allowed")
         build_mock.assert_not_called()
         session.commit_changes.assert_not_called()
 
@@ -132,6 +154,9 @@ class MpcProblemReleaseTest(unittest.TestCase):
         result = prepare_problem_release(problem_id=1)
 
         self.assertEqual(result["status"], "error")
+        self.assertEqual(result["stage"], "build")
+        self.assertEqual(result["can_proceed"], False)
+        self.assertEqual(result["decision"], "build_failed")
         session.commit_changes.assert_not_called()
 
     @patch("src.mcp.utils.problem_release.build_problem_package_and_wait")
@@ -162,6 +187,7 @@ class MpcProblemReleaseTest(unittest.TestCase):
         result = prepare_problem_release(problem_id=1)
 
         self.assertEqual(result["status"], "success")
+        self.assertEqual(result["stage"], "completed")
         self.assertIn(
             "提交后题目仍处于 modified 状态，可能还有未提交改动",
             result["release_warnings"],

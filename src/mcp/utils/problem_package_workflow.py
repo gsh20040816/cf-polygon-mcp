@@ -3,7 +3,7 @@ from __future__ import annotations
 import time
 from typing import Any, Optional
 
-from src.mcp.utils.common import get_problem_session
+from src.mcp.utils.common import build_operation_result, get_problem_session
 from src.polygon.models import Package, PackageState
 
 
@@ -40,6 +40,24 @@ def _pick_latest_package(packages: list[Package]) -> Optional[Package]:
     return max(packages, key=lambda package: (package.creationTimeSeconds, package.id))
 
 
+def _serialize_request(
+    problem_id: int,
+    pin: Optional[str],
+    full: bool,
+    verify: bool,
+    timeout_seconds: int,
+    poll_interval_seconds: float,
+) -> dict[str, Any]:
+    return {
+        "problem_id": problem_id,
+        "pin": pin,
+        "full": full,
+        "verify": verify,
+        "timeout_seconds": timeout_seconds,
+        "poll_interval_seconds": poll_interval_seconds,
+    }
+
+
 def build_problem_package_and_wait(
     problem_id: int,
     full: bool,
@@ -66,6 +84,16 @@ def build_problem_package_and_wait(
     start_time = time.monotonic()
     polls = 0
     matched_package: Optional[Package] = None
+    matched_by = "package_id" if target_package_id is not None else "new_package"
+    package_history: list[dict[str, Any]] = []
+    request = _serialize_request(
+        problem_id=problem_id,
+        pin=pin,
+        full=full,
+        verify=verify,
+        timeout_seconds=timeout_seconds,
+        poll_interval_seconds=poll_interval_seconds,
+    )
 
     while True:
         packages = session.get_packages()
@@ -81,35 +109,68 @@ def build_problem_package_and_wait(
         elapsed_seconds = round(time.monotonic() - start_time, 2)
 
         if matched_package is not None:
+            serialized_package = _serialize_package(matched_package)
+            if not package_history or package_history[-1]["state"] != serialized_package["state"]:
+                package_history.append(serialized_package)
             if matched_package.state == PackageState.READY:
-                return {
-                    "status": "success",
-                    "message": "题目包已构建完成",
-                    "build_result": build_result,
-                    "package": _serialize_package(matched_package),
-                    "polls": polls,
-                    "elapsed_seconds": elapsed_seconds,
-                }
+                response = build_operation_result(
+                    action="build_problem_package_and_wait",
+                    success=True,
+                    message="题目包已构建完成",
+                    result=build_result,
+                    build_result=build_result,
+                    package=serialized_package,
+                    package_history=package_history,
+                    polls=polls,
+                    elapsed_seconds=elapsed_seconds,
+                    target_package_id=target_package_id,
+                    matched_by=matched_by,
+                    initial_package_ids=sorted(existing_package_ids),
+                    request=request,
+                )
+                response["target_package_id"] = target_package_id
+                response["package"] = serialized_package
+                return response
             if matched_package.state == PackageState.FAILED:
-                return {
-                    "status": "error",
-                    "message": "题目包构建失败",
-                    "build_result": build_result,
-                    "package": _serialize_package(matched_package),
-                    "polls": polls,
-                    "elapsed_seconds": elapsed_seconds,
-                }
+                response = build_operation_result(
+                    action="build_problem_package_and_wait",
+                    success=False,
+                    message="题目包构建失败",
+                    result=build_result,
+                    build_result=build_result,
+                    package=serialized_package,
+                    package_history=package_history,
+                    polls=polls,
+                    elapsed_seconds=elapsed_seconds,
+                    target_package_id=target_package_id,
+                    matched_by=matched_by,
+                    initial_package_ids=sorted(existing_package_ids),
+                    request=request,
+                )
+                response["target_package_id"] = target_package_id
+                response["package"] = serialized_package
+                return response
 
         if elapsed_seconds >= timeout_seconds:
-            return {
-                "status": "timeout",
-                "message": "等待题目包构建超时",
-                "build_result": build_result,
-                "package": _serialize_package(matched_package) if matched_package is not None else None,
-                "polls": polls,
-                "elapsed_seconds": elapsed_seconds,
-                "target_package_id": target_package_id,
-            }
+            response = build_operation_result(
+                action="build_problem_package_and_wait",
+                success=False,
+                message="等待题目包构建超时",
+                result=build_result,
+                status_override="timeout",
+                build_result=build_result,
+                package=_serialize_package(matched_package) if matched_package is not None else None,
+                package_history=package_history,
+                polls=polls,
+                elapsed_seconds=elapsed_seconds,
+                target_package_id=target_package_id,
+                matched_by=matched_by,
+                initial_package_ids=sorted(existing_package_ids),
+                request=request,
+            )
+            response["target_package_id"] = target_package_id
+            response["package"] = _serialize_package(matched_package) if matched_package is not None else None
+            return response
 
         polls += 1
         time.sleep(poll_interval_seconds)

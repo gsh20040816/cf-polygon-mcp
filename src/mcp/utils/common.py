@@ -102,11 +102,12 @@ def build_operation_result(
     message: str,
     result: Any = None,
     error: Optional[Exception] = None,
+    status_override: Optional[str] = None,
     **context: Any,
 ) -> dict[str, Any]:
     """构建统一的工具返回结构。"""
     payload: dict[str, Any] = {
-        "status": "success" if success else "error",
+        "status": status_override or ("success" if success else "error"),
         "action": action,
         "message": message,
     }
