@@ -1,4 +1,5 @@
 from typing import Dict, Optional
+
 from src.polygon.utils.client_utils import make_api_request
 from src.polygon.models import FileType, AccessDeniedException, AccessType
 
@@ -29,20 +30,19 @@ def make_problem_request(
     Returns:
         API响应数据
     """
-    if params is None:
-        params = {}
-        
+    request_params = dict(params or {})
+
     # 添加题目ID和PIN码（如果有）
-    params["problemId"] = str(problem_id)
+    request_params["problemId"] = str(problem_id)
     if pin is not None:
-        params["pin"] = pin
+        request_params["pin"] = pin
         
     return make_api_request(
         api_key, 
         api_secret, 
         base_url, 
         method, 
-        params, 
+        request_params,
         raw_response,
         http_method
     )

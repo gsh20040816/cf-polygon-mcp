@@ -258,7 +258,43 @@ class PolygonException(Exception):
     pass
 
 
-class AccessDeniedException(PolygonException):
+class PolygonNetworkError(PolygonException):
+    """网络或传输层异常。"""
+
+    pass
+
+
+class PolygonHTTPError(PolygonException):
+    """HTTP 状态码异常。"""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        status_code: int | None = None,
+        response_text: str | None = None,
+    ):
+        super().__init__(message)
+        self.status_code = status_code
+        self.response_text = response_text
+
+
+class PolygonBusinessError(PolygonException):
+    """Polygon 返回 status!=OK 的业务异常。"""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        comment: str | None = None,
+        context: str | None = None,
+    ):
+        super().__init__(message)
+        self.comment = comment
+        self.context = context
+
+
+class AccessDeniedException(PolygonBusinessError):
     """访问权限不足异常"""
 
     pass

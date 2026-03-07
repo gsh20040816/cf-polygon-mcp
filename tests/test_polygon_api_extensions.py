@@ -1,6 +1,8 @@
 import unittest
 from unittest.mock import Mock, patch
 
+import requests
+
 from src.polygon.api.contest_problems import get_contest_problems
 from src.polygon.api.problem_content import save_problem_file
 from src.polygon.api.problem_extra_validators import get_problem_extra_validators
@@ -22,7 +24,14 @@ from src.polygon.api.problem_sources import (
     set_problem_interactor,
     set_problem_validator,
 )
-from src.polygon.models import AccessType, FileType, SolutionTag, SourceType
+from src.polygon.models import (
+    AccessDeniedException,
+    AccessType,
+    FileType,
+    PolygonNetworkError,
+    SolutionTag,
+    SourceType,
+)
 from src.polygon.utils.client_utils import make_api_request
 
 
@@ -52,6 +61,88 @@ class PolygonApiExtensionsTest(unittest.TestCase):
         self.assertIn("data", call_args.kwargs)
         self.assertNotIn("params", call_args.kwargs)
         self.assertEqual(call_args.kwargs["timeout"], 30)
+
+    @patch("src.polygon.utils.client_utils.requests.request")
+    @patch("src.polygon.utils.client_utils.random.randint", return_value=123456)
+    @patch("src.polygon.utils.client_utils.time.time", return_value=1700000000)
+    def test_make_api_request_does_not_mutate_params(self, _time_mock, _rand_mock, request_mock):
+        response = Mock()
+        response.json.return_value = {"status": "OK", "result": {"ok": True}}
+        response.raise_for_status.return_value = None
+        request_mock.return_value = response
+        params = {"name": "main.cpp"}
+
+        make_api_request(
+            "key",
+            "secret",
+            "https://polygon.codeforces.com/api/",
+            "problem.saveFile",
+            params,
+            http_method="POST",
+        )
+
+        self.assertEqual(params, {"name": "main.cpp"})
+
+    @patch("src.polygon.utils.client_utils.time.sleep")
+    @patch("src.polygon.utils.client_utils.requests.request")
+    def test_make_api_request_retries_on_retryable_http_status(self, request_mock, sleep_mock):
+        retry_response = Mock()
+        retry_response.status_code = 503
+        retry_response.text = "temporary failure"
+        retry_response.headers = {}
+        retry_response.raise_for_status.side_effect = requests.HTTPError(response=retry_response)
+
+        success_response = Mock()
+        success_response.raise_for_status.return_value = None
+        success_response.json.return_value = {"status": "OK", "result": {"ok": True}}
+
+        request_mock.side_effect = [retry_response, success_response]
+
+        result = make_api_request(
+            "key",
+            "secret",
+            "https://polygon.codeforces.com/api/",
+            "problem.saveFile",
+            {"name": "main.cpp"},
+            http_method="POST",
+            max_retries=1,
+        )
+
+        self.assertEqual(result["result"]["ok"], True)
+        self.assertEqual(request_mock.call_count, 2)
+        sleep_mock.assert_called_once()
+
+    @patch("src.polygon.utils.client_utils.requests.request")
+    def test_make_api_request_raises_access_denied_on_business_error(self, request_mock):
+        response = Mock()
+        response.raise_for_status.return_value = None
+        response.json.return_value = {"status": "FAILED", "comment": "access denied"}
+        request_mock.return_value = response
+
+        with self.assertRaises(AccessDeniedException):
+            make_api_request(
+                "key",
+                "secret",
+                "https://polygon.codeforces.com/api/",
+                "problem.saveFile",
+                {"name": "main.cpp"},
+                http_method="POST",
+                max_retries=0,
+            )
+
+    @patch("src.polygon.utils.client_utils.requests.request", side_effect=requests.Timeout("boom"))
+    def test_make_api_request_raises_network_error(self, request_mock):
+        with self.assertRaises(PolygonNetworkError):
+            make_api_request(
+                "key",
+                "secret",
+                "https://polygon.codeforces.com/api/",
+                "problem.saveFile",
+                {"name": "main.cpp"},
+                http_method="POST",
+                max_retries=0,
+            )
+        request_mock.assert_called_once()
 
     def test_save_problem_file_requires_complete_resource_properties(self):
         with self.assertRaisesRegex(ValueError, "需要同时提供"):

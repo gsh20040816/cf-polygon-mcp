@@ -1,4 +1,5 @@
 from typing import Dict, Optional
+
 from src.polygon.utils.client_utils import make_api_request
 
 def make_contest_request(
@@ -25,18 +26,17 @@ def make_contest_request(
     Returns:
         API响应数据
     """
-    if params is None:
-        params = {}
-        
+    request_params = dict(params or {})
+
     # 添加比赛ID和PIN码（如果有）
-    params["contestId"] = str(contest_id)
+    request_params["contestId"] = str(contest_id)
     if pin is not None:
-        params["pin"] = pin
+        request_params["pin"] = pin
         
     return make_api_request(
         api_key, 
         api_secret, 
         base_url, 
         method, 
-        params
-    ) 
+        request_params
+    )
