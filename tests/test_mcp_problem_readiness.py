@@ -5,6 +5,7 @@ from src.mcp.utils.problem_readiness import check_problem_readiness
 from src.polygon.models import PackageState, SolutionTag
 from tests.fake_problem_session import (
     FakeProblemSession,
+    make_file,
     make_package,
     make_problem,
     make_problem_files,
@@ -48,6 +49,7 @@ class MpcProblemReadinessTest(unittest.TestCase):
             solutions=[
                 make_solution("main.cpp", SolutionTag.MA),
                 make_solution("wa.cpp", SolutionTag.WA),
+                make_solution("re.cpp", SolutionTag.RE),
             ],
             validator_tests=[Mock()],
             checker_tests=[Mock()],
@@ -243,6 +245,70 @@ class MpcProblemReadinessTest(unittest.TestCase):
         )
 
     @patch("src.mcp.utils.problem_readiness.get_problem_session")
+    def test_check_problem_readiness_reports_statement_resource_and_generator_mismatches(
+        self,
+        session_mock,
+    ):
+        session = FakeProblemSession(
+            problems=[make_problem(modified=False)],
+            info=make_problem_info(time_limit=2000),
+            statements={
+                "english": make_statement(
+                    name="Generator",
+                    legend=r"See \includegraphics{diagram.png}.",
+                )
+            },
+            validator="validator.cpp",
+            checker="checker.cpp",
+            interactor="",
+            extra_validators=[],
+            statement_resources=[],
+            files=make_problem_files(
+                "validator.cpp",
+                "checker.cpp",
+                "gen.cpp",
+                resource_names=["existing.png"],
+            ),
+            tests=[
+                make_test(
+                    index=1,
+                    manual=True,
+                    input_text="1 2",
+                    use_in_statements=True,
+                    input_for_statement="1 2",
+                    output_for_statement="3",
+                    verify_statement_io=True,
+                ),
+                make_test(index=2, manual=False, script_line="gen 10"),
+                make_test(index=3, manual=False, script_line="missing_gen 20"),
+            ],
+            solutions=[
+                make_solution("main.cpp", SolutionTag.MA),
+                make_solution("wa.cpp", SolutionTag.WA),
+                make_solution("re.cpp", SolutionTag.RE),
+            ],
+            validator_tests=[Mock()],
+            checker_tests=[Mock()],
+            packages=[make_package(1, PackageState.READY)],
+            general_tutorial="tutorial",
+            scripts={"tests": b"gen 10\n"},
+        )
+        session_mock.return_value = session
+
+        result = check_problem_readiness(problem_id=1)
+
+        self.assertFalse(result["ready"])
+        self.assertIn("题面引用了不存在的资源文件: diagram.png", result["blocking_issues"])
+        self.assertIn("以下生成测试的 scriptLine 未出现在当前生成脚本中: 3", result["warnings"])
+        self.assertIn(
+            "生成测试脚本引用了不存在的相关文件或生成器: missing_gen",
+            result["warnings"],
+        )
+        self.assertEqual(result["details"]["statement_resources"]["missing_references"], ["diagram.png"])
+        self.assertEqual(result["details"]["script"]["generated_tests_missing_from_script"], [3])
+        self.assertEqual(result["details"]["script"]["missing_related_file_references"], ["missing_gen"])
+
+    @patch("src.mcp.utils.problem_readiness.get_problem_session")
     def test_check_problem_readiness_reports_test_group_gaps(self, session_mock):
         session = FakeProblemSession(
             problems=[make_problem(modified=False)],
@@ -296,6 +362,69 @@ class MpcProblemReadinessTest(unittest.TestCase):
         self.assertIn("以下测试组依赖了未定义的测试组: unused -> ghost", result["blocking_issues"])
         self.assertIn("以下测试组未分配任何测试: unused", result["warnings"])
         self.assertEqual(result["details"]["test_groups"]["defined_count"], 2)
+
+    @patch("src.mcp.utils.problem_readiness.get_problem_session")
+    def test_check_problem_readiness_reports_group_cycles_and_solution_coverage(
+        self,
+        session_mock,
+    ):
+        session = FakeProblemSession(
+            problems=[make_problem(modified=False)],
+            info=make_problem_info(time_limit=2000),
+            statements={"english": make_statement(name="Cycle")},
+            validator="validator.cpp",
+            checker="checker.cpp",
+            interactor="",
+            extra_validators=[],
+            statement_resources=[make_file("diagram.png", source_type=None)],
+            files=make_problem_files(
+                "validator.cpp",
+                "checker.cpp",
+                resource_names=["diagram.png"],
+            ),
+            tests=[
+                make_test(
+                    index=1,
+                    manual=True,
+                    input_text="1 2",
+                    use_in_statements=True,
+                    input_for_statement="1 2",
+                    output_for_statement="3",
+                    verify_statement_io=True,
+                    group="pretests",
+                ),
+                make_test(index=2, manual=True, input_text="2 3", group="tests"),
+            ],
+            test_groups={
+                "tests": [
+                    make_test_group("pretests", dependencies=["tests"]),
+                    make_test_group("tests", dependencies=["pretests"]),
+                ]
+            },
+            solutions=[
+                make_solution("main.cpp", SolutionTag.MA),
+                make_solution("main2.cpp", SolutionTag.MA),
+                make_solution("wa.cpp", SolutionTag.WA),
+            ],
+            validator_tests=[Mock()],
+            checker_tests=[Mock()],
+            packages=[make_package(1, PackageState.READY)],
+            general_tutorial="tutorial",
+        )
+        session_mock.return_value = session
+
+        result = check_problem_readiness(problem_id=1)
+
+        self.assertFalse(result["ready"])
+        self.assertIn("以下测试组依赖成环: pretests -> tests -> pretests", result["blocking_issues"])
+        self.assertIn("主解（MA）数量异常: 2", result["warnings"])
+        self.assertIn("错误解或边界解类型较少，建议至少覆盖两类非通过判定", result["warnings"])
+        self.assertEqual(
+            result["details"]["test_groups"]["cyclic_dependencies"],
+            ["pretests -> tests -> pretests"],
+        )
+        self.assertEqual(result["details"]["solutions"]["main_solution_count"], 2)
+        self.assertEqual(result["details"]["solutions"]["non_accepted_tag_counts"], {"WA": 1})
 
     @patch("src.mcp.utils.problem_readiness.get_problem_session")
     def test_check_problem_readiness_reports_error_sections_in_summary(self, session_mock):

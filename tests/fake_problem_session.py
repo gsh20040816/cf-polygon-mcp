@@ -87,6 +87,7 @@ class FakeProblemSession:
         checker: Any = "",
         interactor: Any = "",
         extra_validators: Any = None,
+        statement_resources: Any = None,
         files: Any = None,
         tests: Any = None,
         solutions: Any = None,
@@ -112,6 +113,7 @@ class FakeProblemSession:
         self._checker = checker
         self._interactor = interactor
         self._extra_validators = extra_validators or []
+        self._statement_resources = statement_resources or []
         self._files = files
         self._tests = tests or []
         self._solutions = solutions or []
@@ -167,6 +169,10 @@ class FakeProblemSession:
     def get_extra_validators(self) -> list[str]:
         self._record("get_extra_validators")
         return _resolve(self._extra_validators)
+
+    def get_statement_resources(self) -> list[File]:
+        self._record("get_statement_resources")
+        return _resolve(self._statement_resources)
 
     def get_files(self) -> Any:
         self._record("get_files")
@@ -317,11 +323,15 @@ def make_file(
     )
 
 
-def make_problem_files(*source_names: str) -> Any:
+def make_problem_files(
+    *source_names: str,
+    resource_names: Optional[list[str]] = None,
+    aux_names: Optional[list[str]] = None,
+) -> Any:
     files = type("FakeFiles", (), {})()
-    files.resourceFiles = []
+    files.resourceFiles = [make_file(name, source_type=None) for name in (resource_names or [])]
     files.sourceFiles = [make_file(name) for name in source_names]
-    files.auxFiles = []
+    files.auxFiles = [make_file(name, source_type=None) for name in (aux_names or [])]
     return files
 
 
@@ -330,6 +340,7 @@ def make_test(
     index: int,
     manual: bool = True,
     input_text: Optional[str] = None,
+    script_line: Optional[str] = None,
     use_in_statements: bool = False,
     group: Optional[str] = None,
     points: Optional[float] = None,
@@ -342,6 +353,7 @@ def make_test(
         manual=manual,
         input=input_text,
         useInStatements=use_in_statements,
+        scriptLine=script_line,
         group=group,
         points=points,
         inputForStatement=input_for_statement,
