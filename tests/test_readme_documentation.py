@@ -10,6 +10,7 @@ class ReadmeDocumentationTest(unittest.TestCase):
 
     def test_readme_contains_problem_authoring_sections(self):
         self.assertIn("## 面向出题人的典型工作流", self.readme)
+        self.assertIn("## 二进制下载接口约定", self.readme)
         self.assertIn("## 从新建题目到发布的完整链路示例", self.readme)
         self.assertIn("## 交互题、带分题与测试组题目的常见操作", self.readme)
         self.assertIn("## 错误排查", self.readme)
@@ -41,6 +42,17 @@ class ReadmeDocumentationTest(unittest.TestCase):
             "recovery_actions",
         ):
             self.assertIn(tool_name, self.readme)
+
+    def test_readme_documents_binary_download_contract(self):
+        for term in (
+            "download_problem_package_info",
+            "download_problem_package_info_by_url",
+            "source_kind",
+            "source_ref",
+            "content_kind",
+            "sha256",
+        ):
+            self.assertIn(term, self.readme)
 
 
 if __name__ == "__main__":

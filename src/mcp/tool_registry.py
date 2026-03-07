@@ -40,6 +40,7 @@ from src.mcp.utils.problem_packages import (
     build_problem_package,
     commit_problem_changes,
     download_problem_package,
+    download_problem_package_info,
     get_problem_packages,
 )
 from src.mcp.utils.problem_readiness import check_problem_readiness
@@ -172,6 +173,9 @@ _TOOL_PARAM_NOTE_OVERRIDES: dict[str, dict[str, str]] = {
     "download_problem_package_by_url": {
         "package_type": "题目包下载类型。可选值: linux, windows。",
     },
+    "download_problem_package_info": {
+        "package_type": "题目包下载类型。可选值: standard, linux, windows。",
+    },
     "download_problem_package_info_by_url": {
         "package_type": "题目包下载类型。可选值: linux, windows。",
     },
@@ -187,6 +191,7 @@ _TOOL_PRECONDITION_OVERRIDES: dict[str, tuple[str, ...]] = {
     "download_problem_package_by_url": (
         "需要 Polygon 账号密码；可通过 login/password 参数或环境变量 POLYGON_LOGIN/POLYGON_PASSWORD 提供。",
     ),
+    "download_problem_package_info": ("package_id 必须对应题目已有的历史包。",),
     "download_problem_package_info_by_url": (
         "需要 Polygon 账号密码；可通过 login/password 参数或环境变量 POLYGON_LOGIN/POLYGON_PASSWORD 提供。",
     ),
@@ -220,6 +225,7 @@ _TOOL_PRECONDITION_OVERRIDES: dict[str, tuple[str, ...]] = {
 
 _TOOL_RETURN_OVERRIDES: dict[str, tuple[str, ...]] = {
     "download_problem_package_by_url": ("原始 bytes。失败时直接抛异常。",),
+    "download_problem_package": ("原始 bytes。失败时直接抛异常。",),
     "download_problem_descriptor": ("原始 bytes。失败时直接抛异常。",),
     "download_contest_descriptor": ("原始 bytes。失败时直接抛异常。",),
     "download_contest_statements_pdf": ("原始 bytes。失败时直接抛异常。",),
@@ -239,6 +245,8 @@ class ToolRegistration:
 TOOL_REGISTRY: tuple[ToolRegistration, ...] = (
     ToolRegistration("downloads", download_problem_package_by_url),
     ToolRegistration("downloads", download_problem_package_info_by_url),
+    ToolRegistration("downloads", download_problem_package),
+    ToolRegistration("downloads", download_problem_package_info),
     ToolRegistration("downloads", download_problem_descriptor),
     ToolRegistration("downloads", download_problem_descriptor_info),
     ToolRegistration("downloads", download_contest_descriptor),
@@ -268,7 +276,6 @@ TOOL_REGISTRY: tuple[ToolRegistration, ...] = (
     ToolRegistration("read", view_problem_general_description),
     ToolRegistration("read", view_problem_general_tutorial),
     ToolRegistration("read", get_problem_packages),
-    ToolRegistration("read", download_problem_package),
     ToolRegistration("read", get_contest_problems),
     ToolRegistration("write", create_problem),
     ToolRegistration("write", save_problem_statement_resource),
@@ -406,7 +413,8 @@ def _build_return_lines(registration: ToolRegistration) -> list[str]:
             return [
                 "结构化 dict。",
                 "固定字段：status、action、message、result、error、error_type。",
-                "result 中会包含 source_url、filename、content_kind、size_bytes、sha256 等下载元数据。",
+                "result 中固定包含 source_kind、source_ref、filename、content_kind、size_bytes、sha256。",
+                "如果来源本身是 URL，还会额外包含 source_url 等上下文字段。",
             ]
         return ["原始 bytes。失败时直接抛异常。"]
 

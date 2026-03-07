@@ -8,6 +8,7 @@ from src.mcp.tool_registry import TOOL_REGISTRY, get_registered_tool_names, vali
 from src.mcp.utils.downloads import download_problem_package_info_by_url
 from src.mcp.utils.problem_content import save_problem_file
 from src.mcp.utils.problem_package_workflow import build_problem_package_and_wait
+from src.mcp.utils.problem_packages import download_problem_package, download_problem_package_info
 from src.mcp.utils.problem_tests_extended import save_problem_checker_test, save_problem_test_group
 
 
@@ -70,6 +71,20 @@ class MpcServerRegistryTest(unittest.TestCase):
             self.assertIn("前置条件：", doc)
             self.assertIn("返回：", doc)
 
+    def test_download_tools_follow_raw_and_info_naming_pairs(self):
+        download_names = {
+            registration.name for registration in TOOL_REGISTRY if registration.category == "downloads"
+        }
+
+        for name in download_names:
+            if "_info" in name:
+                continue
+            if name.endswith("_by_url"):
+                expected_info_name = f"{name[:-7]}_info_by_url"
+            else:
+                expected_info_name = f"{name}_info"
+            self.assertIn(expected_info_name, download_names, msg=f"{name} 缺少配套的 _info 接口")
+
     def test_docstrings_include_value_hints_and_return_contracts(self):
         save_problem_file_doc = inspect.getdoc(save_problem_file)
         self.assertIn("可选值: resource, source, aux", save_problem_file_doc)
@@ -88,8 +103,15 @@ class MpcServerRegistryTest(unittest.TestCase):
         build_problem_package_and_wait_doc = inspect.getdoc(build_problem_package_and_wait)
         self.assertIn("stage、decision、can_retry、recovery_actions", build_problem_package_and_wait_doc)
 
+        download_package_doc = inspect.getdoc(download_problem_package)
+        self.assertIn("类型：downloads", download_package_doc)
+
+        download_package_info_doc = inspect.getdoc(download_problem_package_info)
+        self.assertIn("source_kind、source_ref、filename、content_kind、size_bytes、sha256", download_package_info_doc)
+
         download_info_doc = inspect.getdoc(download_problem_package_info_by_url)
-        self.assertIn("source_url、filename、content_kind、size_bytes、sha256", download_info_doc)
+        self.assertIn("source_kind、source_ref、filename、content_kind、size_bytes、sha256", download_info_doc)
+        self.assertIn("source_url", download_info_doc)
 
 
 if __name__ == "__main__":

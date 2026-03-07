@@ -1,4 +1,5 @@
 import os
+import hashlib
 from enum import Enum
 from pathlib import Path
 from typing import Any, Callable, Optional, Type
@@ -173,6 +174,37 @@ def build_operation_result(
             continue
         payload[key] = sanitize_sensitive_data(value)
     return payload
+
+
+def build_download_result(
+    *,
+    action: str,
+    filename: str,
+    content_kind: str,
+    content: bytes,
+    source_kind: str,
+    source_ref: str,
+    source_url: Optional[str] = None,
+    **context: Any,
+) -> dict[str, Any]:
+    """构建统一的下载元数据结果。"""
+    metadata = {
+        "source_kind": source_kind,
+        "source_ref": source_ref,
+        "filename": filename,
+        "content_kind": content_kind,
+        "size_bytes": len(content),
+        "sha256": hashlib.sha256(content).hexdigest(),
+        **({"source_url": source_url} if source_url is not None else {}),
+        **{key: value for key, value in context.items() if value is not None},
+    }
+    return build_operation_result(
+        action=action,
+        success=True,
+        message=f"{filename} 下载元数据已生成",
+        result=metadata,
+        **metadata,
+    )
 
 
 def run_write_operation(

@@ -1,7 +1,6 @@
-import hashlib
 from typing import Optional
 
-from src.mcp.utils.common import build_operation_result, get_account_credentials
+from src.mcp.utils.common import build_download_result, get_account_credentials
 from src.polygon.download import (
     download_contest_descriptor as _download_contest_descriptor,
     download_contest_statements_pdf as _download_contest_statements_pdf,
@@ -10,30 +9,14 @@ from src.polygon.download import (
 )
 
 
-def _build_download_info(
-    *,
-    action: str,
-    source_url: str,
-    filename: str,
-    content_kind: str,
-    content: bytes,
-    **context,
-) -> dict:
-    metadata = {
-        "source_url": source_url,
-        "filename": filename,
-        "content_kind": content_kind,
-        "size_bytes": len(content),
-        "sha256": hashlib.sha256(content).hexdigest(),
-        **{key: value for key, value in context.items() if value is not None},
-    }
-    return build_operation_result(
-        action=action,
-        success=True,
-        message=f"{filename} 下载元数据已生成",
-        result=metadata,
-        **metadata,
-    )
+DOWNLOAD_INFO_FIXED_FIELDS = (
+    "source_kind",
+    "source_ref",
+    "filename",
+    "content_kind",
+    "size_bytes",
+    "sha256",
+)
 
 
 def download_problem_package_by_url(
@@ -86,12 +69,14 @@ def download_problem_package_info_by_url(
         login=login,
         password=password,
     )
-    return _build_download_info(
+    return build_download_result(
         action="download_problem_package_info_by_url",
-        source_url=problem_url,
         filename="package.zip",
         content_kind="zip",
         content=content,
+        source_kind="url",
+        source_ref=problem_url,
+        source_url=problem_url,
         revision=revision,
         package_type=package_type,
     )
@@ -130,12 +115,14 @@ def download_problem_descriptor_info(
         login=login,
         password=password,
     )
-    return _build_download_info(
+    return build_download_result(
         action="download_problem_descriptor_info",
-        source_url=problem_url,
         filename="problem.xml",
         content_kind="xml",
         content=content,
+        source_kind="url",
+        source_ref=problem_url,
+        source_url=problem_url,
         revision=revision,
     )
 
@@ -169,12 +156,14 @@ def download_contest_descriptor_info(
         login=login,
         password=password,
     )
-    return _build_download_info(
+    return build_download_result(
         action="download_contest_descriptor_info",
-        source_url=contest_url,
         filename="contest.xml",
         content_kind="xml",
         content=content,
+        source_kind="url",
+        source_ref=contest_url,
+        source_url=contest_url,
     )
 
 
@@ -211,11 +200,13 @@ def download_contest_statements_pdf_info(
         login=login,
         password=password,
     )
-    return _build_download_info(
+    return build_download_result(
         action="download_contest_statements_pdf_info",
-        source_url=contest_url,
         filename="statements.pdf",
         content_kind="pdf",
         content=content,
+        source_kind="url",
+        source_ref=contest_url,
+        source_url=contest_url,
         language=language,
     )

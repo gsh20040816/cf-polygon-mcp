@@ -62,6 +62,20 @@
 
 写操作和 workflow 工具都会返回结构化结果。最常见的固定字段是 `status`、`action`、`message`、`result`；workflow 结果还会补充 `stage`、`decision`、`can_retry`、`recovery_actions`。
 
+## 二进制下载接口约定
+
+下载类工具现在统一分成两族：
+
+- 原始下载接口保持原名，直接返回 `bytes`，例如 `download_problem_package`、`download_problem_package_by_url`、`download_problem_descriptor`、`download_contest_descriptor`、`download_contest_statements_pdf`
+- 元数据接口统一使用 `_info` 后缀；如果原名以 `_by_url` 结尾，则在它前面插入 `_info`，例如 `download_problem_package_info`、`download_problem_package_info_by_url`、`download_problem_descriptor_info`
+
+`_info` 接口不会直接返回二进制内容，而是返回结构化元数据。固定字段是 `source_kind`、`source_ref`、`filename`、`content_kind`、`size_bytes`、`sha256`；如果来源本身是 URL，还会附带 `source_url`，而按 `problem_id/package_id` 下载的包会附带 `problem_id`、`package_id`、`package_type`。
+
+简单说：
+
+- 需要真正的文件内容时，用原始接口
+- 只想确认下载对象、文件类型、大小、哈希或给上层 agent 做分流时，用 `_info` 接口
+
 ## 从新建题目到发布的完整链路示例
 
 下面示例按“普通非交互题”给出一条最短闭环。示例里的 `problem_id` 请替换成你自己的题目编号；如果你刚调用过 `create_problem`，后续一般直接取返回值里的 `problem.id` 即可。
@@ -235,13 +249,13 @@ python -m unittest discover -s tests -v
 仓库包含两个 GitHub Actions 工作流：
 
 - [ci.yml](.github/workflows/ci.yml)：在 `push` 到 `main` 或收到 `pull_request` 时运行，使用 Python 3.11 安装依赖、执行 `python -m unittest discover -s tests -v`，并构建 `sdist` 和 `wheel`
-- [publish.yml](.github/workflows/publish.yml)：仅在推送版本 tag（如 `v0.11.0`）时运行，会重新执行测试与构建，校验 tag 与 `pyproject.toml` 中的版本一致，并在该版本尚未发布到 PyPI 时上传发行包
+- [publish.yml](.github/workflows/publish.yml)：仅在推送版本 tag（如 `v0.12.0`）时运行，会重新执行测试与构建，校验 tag 与 `pyproject.toml` 中的版本一致，并在该版本尚未发布到 PyPI 时上传发行包
 
 推荐的发布流程：
 
 1. 更新 [pyproject.toml](pyproject.toml) 中的版本号并推送到 `main`
 2. 等待 [ci.yml](.github/workflows/ci.yml) 通过
-3. 创建并推送对应版本 tag，例如 `git tag v0.11.0 && git push origin v0.11.0`
+3. 创建并推送对应版本 tag，例如 `git tag v0.12.0 && git push origin v0.12.0`
 
 要让自动发布生效，需要先在 PyPI 的 Trusted Publisher 中添加这个 GitHub 仓库：
 

@@ -1,6 +1,7 @@
 from typing import Optional
 
 from src.mcp.utils.common import (
+    build_download_result,
     call_problem_session_method,
     get_problem_session,
     parse_enum,
@@ -33,6 +34,32 @@ def download_problem_package(
         "download_package",
         package_id=package_id,
         package_type=package_type_enum,
+    )
+
+
+def download_problem_package_info(
+    problem_id: int,
+    package_id: int,
+    pin: Optional[str] = None,
+    package_type: Optional[str] = None,
+) -> dict[str, object]:
+    """下载题目包并返回元数据。"""
+    content = download_problem_package(
+        problem_id=problem_id,
+        package_id=package_id,
+        pin=pin,
+        package_type=package_type,
+    )
+    return build_download_result(
+        action="download_problem_package_info",
+        filename="package.zip",
+        content_kind="zip",
+        content=content,
+        source_kind="problem_package",
+        source_ref=f"problem:{problem_id}/package:{package_id}",
+        problem_id=problem_id,
+        package_id=package_id,
+        package_type=package_type,
     )
 
 

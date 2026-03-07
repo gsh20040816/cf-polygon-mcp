@@ -2,10 +2,12 @@ import unittest
 from unittest.mock import Mock, patch
 
 from src.mcp.utils.downloads import (
+    DOWNLOAD_INFO_FIXED_FIELDS,
     download_contest_statements_pdf_info,
     download_problem_package_by_url,
     download_problem_package_info_by_url,
 )
+from src.mcp.utils.problem_packages import download_problem_package_info
 from src.polygon.download import (
     download_contest_descriptor,
     download_contest_statements_pdf,
@@ -91,6 +93,18 @@ class PolygonDownloadsTest(unittest.TestCase):
         self.assertEqual(result["status"], "success")
         self.assertEqual(result["action"], "download_problem_package_info_by_url")
         self.assertEqual(result["message"], "package.zip 下载元数据已生成")
+        for field_name in DOWNLOAD_INFO_FIXED_FIELDS:
+            self.assertIn(field_name, result)
+            self.assertIn(field_name, result["result"])
+        self.assertEqual(result["source_kind"], "url")
+        self.assertEqual(
+            result["source_ref"],
+            "https://polygon.codeforces.com/p/demo/a-plus-b",
+        )
+        self.assertEqual(
+            result["source_url"],
+            "https://polygon.codeforces.com/p/demo/a-plus-b",
+        )
         self.assertEqual(result["filename"], "package.zip")
         self.assertEqual(result["content_kind"], "zip")
         self.assertEqual(result["size_bytes"], 9)
@@ -105,6 +119,34 @@ class PolygonDownloadsTest(unittest.TestCase):
         )
         download_mock.assert_called_once()
 
+    @patch("src.mcp.utils.problem_packages.download_problem_package", return_value=b"zip-bytes")
+    def test_download_problem_package_info_returns_metadata(self, download_mock):
+        result = download_problem_package_info(
+            problem_id=321,
+            package_id=9,
+            pin="4321",
+            package_type="standard",
+        )
+
+        self.assertEqual(result["status"], "success")
+        self.assertEqual(result["action"], "download_problem_package_info")
+        for field_name in DOWNLOAD_INFO_FIXED_FIELDS:
+            self.assertIn(field_name, result)
+            self.assertIn(field_name, result["result"])
+        self.assertEqual(result["source_kind"], "problem_package")
+        self.assertEqual(result["source_ref"], "problem:321/package:9")
+        self.assertEqual(result["problem_id"], 321)
+        self.assertEqual(result["package_id"], 9)
+        self.assertEqual(result["package_type"], "standard")
+        self.assertNotIn("pin", result)
+        self.assertNotIn("pin", result["result"])
+        download_mock.assert_called_once_with(
+            problem_id=321,
+            package_id=9,
+            pin="4321",
+            package_type="standard",
+        )
+
     @patch("src.mcp.utils.downloads.download_contest_statements_pdf", return_value=b"%PDF-1.7")
     def test_download_contest_statements_pdf_info_returns_metadata(self, download_mock):
         result = download_contest_statements_pdf_info(
@@ -113,6 +155,8 @@ class PolygonDownloadsTest(unittest.TestCase):
         )
 
         self.assertEqual(result["status"], "success")
+        for field_name in DOWNLOAD_INFO_FIXED_FIELDS:
+            self.assertIn(field_name, result)
         self.assertEqual(result["filename"], "statements.pdf")
         self.assertEqual(result["content_kind"], "pdf")
         self.assertEqual(result["language"], "english")
