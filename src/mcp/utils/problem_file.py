@@ -1,7 +1,8 @@
 from typing import Optional
+
+from src.mcp.utils.common import call_problem_session_method, parse_enum
 from src.polygon.models import FileType
-from src.polygon.client import PolygonClient
-from src.mcp.utils.common import get_api_credentials
+
 
 def view_problem_file(
     problem_id: int,
@@ -37,17 +38,11 @@ def view_problem_file(
         >>> content = view_problem_file(12345, "resource", "testlib.h")
         >>> print(content.decode('utf-8'))
     """
-    api_key, api_secret = get_api_credentials()
-    
-    # 验证文件类型
-    try:
-        file_type_enum = FileType(file_type)
-    except ValueError:
-        raise ValueError(
-            f"无效的文件类型: {file_type}\n"
-            "可选值: resource, source, aux"
-        )
-    
-    client = PolygonClient(api_key, api_secret)
-    session = client.create_problem_session(problem_id, pin)
-    return session.view_file(file_type_enum, file_name) 
+    file_type_enum = parse_enum(FileType, file_type, "file_type")
+    return call_problem_session_method(
+        problem_id,
+        pin,
+        "view_file",
+        file_type_enum,
+        file_name,
+    )

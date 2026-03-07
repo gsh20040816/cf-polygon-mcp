@@ -1,6 +1,6 @@
 from typing import Optional
 
-from src.mcp.utils.common import get_problem_session
+from src.mcp.utils.common import call_problem_session_method
 
 
 def get_problem_extra_validators(problem_id: int, pin: Optional[str] = None) -> list[str]:
@@ -18,4 +18,4 @@ def get_problem_extra_validators(problem_id: int, pin: Optional[str] = None) -> 
         ValueError: 当环境变量未设置时抛出
         AccessDeniedException: 当没有足够的访问权限时抛出
     """
-    return get_problem_session(problem_id, pin).get_extra_validators()
+    return call_problem_session_method(problem_id, pin, "get_extra_validators")

@@ -1,6 +1,7 @@
 from typing import Optional
 
 from src.mcp.utils.common import (
+    call_problem_session_method,
     get_problem_session,
     parse_enum,
     resolve_text_input,
@@ -19,7 +20,7 @@ from src.polygon.models import (
 
 def get_problem_statement_resources(problem_id: int, pin: Optional[str] = None) -> list[File]:
     """获取题目陈述引用的资源文件列表。"""
-    return get_problem_session(problem_id, pin).get_statement_resources()
+    return call_problem_session_method(problem_id, pin, "get_statement_resources")
 
 
 def save_problem_statement_resource(
@@ -52,7 +53,7 @@ def save_problem_statement_resource(
 
 def get_problem_files(problem_id: int, pin: Optional[str] = None) -> ProblemFiles:
     """获取题目的资源文件、源文件和辅助文件列表。"""
-    return get_problem_session(problem_id, pin).get_files()
+    return call_problem_session_method(problem_id, pin, "get_files")
 
 
 def save_problem_file(
@@ -104,7 +105,7 @@ def view_problem_script(
     pin: Optional[str] = None,
 ) -> bytes:
     """查看题目的测试生成脚本。"""
-    return get_problem_session(problem_id, pin).view_script(testset)
+    return call_problem_session_method(problem_id, pin, "view_script", testset)
 
 
 def save_problem_script(
@@ -134,7 +135,7 @@ def save_problem_script(
 
 def get_problem_tags(problem_id: int, pin: Optional[str] = None) -> list[str]:
     """获取题目标签列表。"""
-    return get_problem_session(problem_id, pin).get_tags()
+    return call_problem_session_method(problem_id, pin, "get_tags")
 
 
 def save_problem_tags(
@@ -155,7 +156,7 @@ def save_problem_tags(
 
 def view_problem_general_description(problem_id: int, pin: Optional[str] = None) -> str:
     """获取题目的通用描述。"""
-    return get_problem_session(problem_id, pin).get_general_description()
+    return call_problem_session_method(problem_id, pin, "get_general_description")
 
 
 def save_problem_general_description(
@@ -175,7 +176,7 @@ def save_problem_general_description(
 
 def view_problem_general_tutorial(problem_id: int, pin: Optional[str] = None) -> str:
     """获取题目的通用题解。"""
-    return get_problem_session(problem_id, pin).get_general_tutorial()
+    return call_problem_session_method(problem_id, pin, "get_general_tutorial")
 
 
 def save_problem_general_tutorial(

@@ -1,7 +1,8 @@
 from typing import Optional
 
-from src.mcp.utils.common import get_problem_session
+from src.mcp.utils.common import call_problem_session_method
 from src.polygon.models import ProblemInfo
+
 
 def get_problem_info(problem_id: int, pin: Optional[str] = None) -> ProblemInfo:
     """
@@ -21,4 +22,4 @@ def get_problem_info(problem_id: int, pin: Optional[str] = None) -> ProblemInfo:
     Raises:
         ValueError: 当环境变量未设置时抛出
     """
-    return get_problem_session(problem_id, pin).get_info()
+    return call_problem_session_method(problem_id, pin, "get_info")

@@ -1,7 +1,8 @@
 from typing import Dict, Optional
 
-from src.mcp.utils.common import get_problem_session
+from src.mcp.utils.common import call_problem_session_method
 from src.polygon.models import Statement
+
 
 def get_problem_statements(problem_id: int, pin: Optional[str] = None) -> Dict[str, Statement]:
     """
@@ -27,5 +28,5 @@ def get_problem_statements(problem_id: int, pin: Optional[str] = None) -> Dict[s
         ValueError: 当环境变量未设置时抛出
         AccessDeniedException: 当没有足够的访问权限时抛出
     """
-    statements = get_problem_session(problem_id, pin).get_statements()
+    statements = call_problem_session_method(problem_id, pin, "get_statements")
     return statements.as_dict()

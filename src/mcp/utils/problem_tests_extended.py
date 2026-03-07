@@ -1,6 +1,11 @@
 from typing import Optional
 
-from src.mcp.utils.common import get_problem_session, parse_enum, run_write_operation
+from src.mcp.utils.common import (
+    call_problem_session_method,
+    get_problem_session,
+    parse_enum,
+    run_write_operation,
+)
 from src.polygon.models import (
     CheckerTest,
     CheckerTestVerdict,
@@ -20,7 +25,13 @@ def get_problem_tests(
     no_inputs: Optional[bool] = None,
 ) -> list[Test]:
     """获取题目测试列表。"""
-    return get_problem_session(problem_id, pin).get_tests(testset=testset, no_inputs=no_inputs)
+    return call_problem_session_method(
+        problem_id,
+        pin,
+        "get_tests",
+        testset=testset,
+        no_inputs=no_inputs,
+    )
 
 
 def view_problem_test_input(
@@ -30,7 +41,7 @@ def view_problem_test_input(
     pin: Optional[str] = None,
 ) -> bytes:
     """查看某个测试输入。"""
-    return get_problem_session(problem_id, pin).view_test_input(testset, test_index)
+    return call_problem_session_method(problem_id, pin, "view_test_input", testset, test_index)
 
 
 def view_problem_test_answer(
@@ -40,7 +51,7 @@ def view_problem_test_answer(
     pin: Optional[str] = None,
 ) -> bytes:
     """查看某个测试答案。"""
-    return get_problem_session(problem_id, pin).view_test_answer(testset, test_index)
+    return call_problem_session_method(problem_id, pin, "view_test_answer", testset, test_index)
 
 
 def save_problem_test(
@@ -89,7 +100,7 @@ def get_problem_validator_tests(
     pin: Optional[str] = None,
 ) -> list[ValidatorTest]:
     """获取 validator 测试列表。"""
-    return get_problem_session(problem_id, pin).get_validator_tests()
+    return call_problem_session_method(problem_id, pin, "get_validator_tests")
 
 
 def save_problem_validator_test(
@@ -130,7 +141,7 @@ def get_problem_checker_tests(
     pin: Optional[str] = None,
 ) -> list[CheckerTest]:
     """获取 checker 测试列表。"""
-    return get_problem_session(problem_id, pin).get_checker_tests()
+    return call_problem_session_method(problem_id, pin, "get_checker_tests")
 
 
 def save_problem_checker_test(
@@ -171,7 +182,13 @@ def view_problem_test_groups(
     group: Optional[str] = None,
 ) -> list[TestGroup]:
     """查看测试组配置。"""
-    return get_problem_session(problem_id, pin).view_test_groups(testset=testset, group=group)
+    return call_problem_session_method(
+        problem_id,
+        pin,
+        "view_test_groups",
+        testset=testset,
+        group=group,
+    )
 
 
 def save_problem_test_group(

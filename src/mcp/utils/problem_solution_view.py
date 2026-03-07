@@ -1,6 +1,7 @@
 from typing import Optional
-from src.polygon.client import PolygonClient
-from src.mcp.utils.common import get_api_credentials
+
+from src.mcp.utils.common import call_problem_session_method
+
 
 def view_problem_solution(
     problem_id: int,
@@ -40,8 +41,4 @@ def view_problem_solution(
         >>> )
         >>> print(content.decode('utf-8'))
     """
-    api_key, api_secret = get_api_credentials()
-    
-    client = PolygonClient(api_key, api_secret)
-    session = client.create_problem_session(problem_id, pin)
-    return session.view_solution(solution_name) 
+    return call_problem_session_method(problem_id, pin, "view_solution", solution_name)

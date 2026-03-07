@@ -1,7 +1,8 @@
 from typing import List, Optional
+
+from src.mcp.utils.common import call_client_method
 from src.polygon.models import Problem
-from src.polygon.client import PolygonClient
-from src.mcp.utils.common import get_api_credentials
+
 
 def get_problems(
     show_deleted: Optional[bool] = None,
@@ -24,12 +25,10 @@ def get_problems(
     Raises:
         ValueError: 当环境变量未设置时抛出
     """
-    api_key, api_secret = get_api_credentials()
-    
-    client = PolygonClient(api_key, api_secret)
-    return client.get_problems(
+    return call_client_method(
+        "get_problems",
         show_deleted=show_deleted,
         problem_id=problem_id,
         name=name,
-        owner=owner
-    ) 
+        owner=owner,
+    )

@@ -1,6 +1,7 @@
 from typing import Optional
-from src.polygon.client import PolygonClient
-from src.mcp.utils.common import get_api_credentials
+
+from src.mcp.utils.common import call_problem_session_method
+
 
 def get_problem_interactor(problem_id: int, pin: Optional[str] = None) -> str:
     """
@@ -17,8 +18,4 @@ def get_problem_interactor(problem_id: int, pin: Optional[str] = None) -> str:
         ValueError: 当环境变量未设置时抛出
         AccessDeniedException: 当没有足够的访问权限时抛出
     """
-    api_key, api_secret = get_api_credentials()
-    
-    client = PolygonClient(api_key, api_secret)
-    session = client.create_problem_session(problem_id, pin)
-    return session.get_interactor() 
+    return call_problem_session_method(problem_id, pin, "get_interactor")

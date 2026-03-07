@@ -4,13 +4,20 @@ import unittest
 from unittest.mock import Mock, patch
 
 from src.mcp.utils.contest_problems import get_contest_problems
+from src.mcp.utils.problem_checker import get_problem_checker
 from src.mcp.utils.problem_content import save_problem_file, save_problem_script
 from src.mcp.utils.problem_extra_validators import get_problem_extra_validators
+from src.mcp.utils.problem_file import view_problem_file
 from src.mcp.utils.problem_info import get_problem_info
+from src.mcp.utils.problem_interactor import get_problem_interactor
+from src.mcp.utils.problem_solution_view import view_problem_solution
+from src.mcp.utils.problem_solutions import get_problem_solutions
 from src.mcp.utils.problem_save_statement import save_problem_statement
 from src.mcp.utils.problem_sources import save_problem_solution
 from src.mcp.utils.problem_tests_extended import save_problem_test_group
 from src.mcp.utils.problem_update_info import update_problem_info
+from src.mcp.utils.problem_validator import get_problem_validator
+from src.mcp.utils.problems import get_problems
 from src.mcp.utils.problem_working_copy import (
     discard_problem_working_copy,
     update_problem_working_copy,
@@ -93,16 +100,14 @@ class MpcUtilsExtensionsTest(unittest.TestCase):
             check_existing=None,
         )
 
-    @patch("src.mcp.utils.problem_info.get_problem_session")
-    def test_get_problem_info_passes_pin(self, session_mock):
-        session = Mock()
-        session.get_info.return_value = {"id": 1}
-        session_mock.return_value = session
+    @patch("src.mcp.utils.problem_info.call_problem_session_method")
+    def test_get_problem_info_passes_pin(self, session_call_mock):
+        session_call_mock.return_value = {"id": 1}
 
         result = get_problem_info(1, pin="4321")
 
         self.assertEqual(result, {"id": 1})
-        session_mock.assert_called_once_with(1, "4321")
+        session_call_mock.assert_called_once_with(1, "4321", "get_info")
 
     @patch("src.mcp.utils.problem_tests_extended.get_problem_session")
     def test_save_problem_test_group_parses_policy_inputs(self, session_mock):
@@ -130,17 +135,41 @@ class MpcUtilsExtensionsTest(unittest.TestCase):
             dependencies=["pretests"],
         )
 
-    @patch("src.mcp.utils.problem_extra_validators.get_problem_session")
-    def test_get_problem_extra_validators_passes_pin(self, session_mock):
-        session = Mock()
-        session.get_extra_validators.return_value = ["validator-extra.cpp"]
-        session_mock.return_value = session
+    @patch("src.mcp.utils.problem_extra_validators.call_problem_session_method")
+    def test_get_problem_extra_validators_passes_pin(self, session_call_mock):
+        session_call_mock.return_value = ["validator-extra.cpp"]
 
         result = get_problem_extra_validators(1, pin="5678")
 
         self.assertEqual(result, ["validator-extra.cpp"])
-        session_mock.assert_called_once_with(1, "5678")
-        session.get_extra_validators.assert_called_once_with()
+        session_call_mock.assert_called_once_with(1, "5678", "get_extra_validators")
+
+    @patch("src.mcp.utils.problem_checker.call_problem_session_method")
+    def test_get_problem_checker_uses_common_session_helper(self, session_call_mock):
+        session_call_mock.return_value = "checker.cpp"
+
+        result = get_problem_checker(1, pin="1357")
+
+        self.assertEqual(result, "checker.cpp")
+        session_call_mock.assert_called_once_with(1, "1357", "get_checker")
+
+    @patch("src.mcp.utils.problem_validator.call_problem_session_method")
+    def test_get_problem_validator_uses_common_session_helper(self, session_call_mock):
+        session_call_mock.return_value = "validator.cpp"
+
+        result = get_problem_validator(1, pin="2468")
+
+        self.assertEqual(result, "validator.cpp")
+        session_call_mock.assert_called_once_with(1, "2468", "get_validator")
+
+    @patch("src.mcp.utils.problem_interactor.call_problem_session_method")
+    def test_get_problem_interactor_uses_common_session_helper(self, session_call_mock):
+        session_call_mock.return_value = "interactor.cpp"
+
+        result = get_problem_interactor(1, pin="9999")
+
+        self.assertEqual(result, "interactor.cpp")
+        session_call_mock.assert_called_once_with(1, "9999", "get_interactor")
 
     @patch("src.mcp.utils.problem_sources.get_problem_session")
     def test_save_problem_solution_reads_text_from_local_path(self, session_mock):
@@ -183,6 +212,60 @@ class MpcUtilsExtensionsTest(unittest.TestCase):
         self.assertEqual(result["action"], "save_problem_solution")
         self.assertEqual(result["error_type"], "ValueError")
         self.assertIn("只支持 solution 类型", result["error"])
+
+    @patch("src.mcp.utils.problem_file.call_problem_session_method")
+    def test_view_problem_file_parses_file_type_with_common_helper(self, session_call_mock):
+        session_call_mock.return_value = b"content"
+
+        result = view_problem_file(1, "source", "checker.cpp", pin="4321")
+
+        self.assertEqual(result, b"content")
+        session_call_mock.assert_called_once_with(
+            1,
+            "4321",
+            "view_file",
+            FileType.SOURCE,
+            "checker.cpp",
+        )
+
+    def test_view_problem_file_rejects_invalid_file_type(self):
+        with self.assertRaisesRegex(ValueError, "无效的 file_type"):
+            view_problem_file(1, "binary", "x")
+
+    @patch("src.mcp.utils.problem_solution_view.call_problem_session_method")
+    def test_view_problem_solution_uses_common_session_helper(self, session_call_mock):
+        session_call_mock.return_value = b"// solution"
+
+        result = view_problem_solution(1, "main.cpp", pin="8765")
+
+        self.assertEqual(result, b"// solution")
+        session_call_mock.assert_called_once_with(1, "8765", "view_solution", "main.cpp")
+
+    @patch("src.mcp.utils.problem_solutions.call_problem_session_method")
+    def test_get_problem_solutions_uses_common_session_helper(self, session_call_mock):
+        solutions = [Mock()]
+        session_call_mock.return_value = solutions
+
+        result = get_problem_solutions(1, pin="1111")
+
+        self.assertEqual(result, solutions)
+        session_call_mock.assert_called_once_with(1, "1111", "get_solutions")
+
+    @patch("src.mcp.utils.problems.call_client_method")
+    def test_get_problems_uses_common_client_helper(self, client_call_mock):
+        problems = [Mock()]
+        client_call_mock.return_value = problems
+
+        result = get_problems(show_deleted=True, problem_id=1, name="A", owner="owner")
+
+        self.assertEqual(result, problems)
+        client_call_mock.assert_called_once_with(
+            "get_problems",
+            show_deleted=True,
+            problem_id=1,
+            name="A",
+            owner="owner",
+        )
 
     def test_save_problem_script_requires_exactly_one_source_input(self):
         result = save_problem_script(

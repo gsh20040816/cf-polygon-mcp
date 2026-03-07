@@ -1,7 +1,8 @@
 from typing import List, Optional
+
+from src.mcp.utils.common import call_problem_session_method
 from src.polygon.models import Solution
-from src.polygon.client import PolygonClient
-from src.mcp.utils.common import get_api_credentials
+
 
 def get_problem_solutions(problem_id: int, pin: Optional[str] = None) -> List[Solution]:
     """
@@ -41,8 +42,4 @@ def get_problem_solutions(problem_id: int, pin: Optional[str] = None) -> List[So
         >>>     elif solution.is_uncertain():
         >>>         print("This solution might be correct or might exceed time limit")
     """
-    api_key, api_secret = get_api_credentials()
-    
-    client = PolygonClient(api_key, api_secret)
-    session = client.create_problem_session(problem_id, pin)
-    return session.get_solutions() 
+    return call_problem_session_method(problem_id, pin, "get_solutions")

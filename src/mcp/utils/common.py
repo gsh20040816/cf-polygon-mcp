@@ -51,6 +51,39 @@ def get_problem_session(problem_id: int, pin: Optional[str] = None):
     return get_client().create_problem_session(problem_id, pin)
 
 
+def call_client_method(method_name: str, /, *args: Any, **kwargs: Any) -> Any:
+    """创建客户端并调用指定方法。"""
+    client = get_client()
+    method = getattr(client, method_name)
+    return method(*args, **kwargs)
+
+
+def call_problem_session(
+    problem_id: int,
+    pin: Optional[str],
+    operation: Callable[[Any], Any],
+) -> Any:
+    """创建题目会话后执行给定操作。"""
+    session = get_problem_session(problem_id, pin)
+    return operation(session)
+
+
+def call_problem_session_method(
+    problem_id: int,
+    pin: Optional[str],
+    method_name: str,
+    /,
+    *args: Any,
+    **kwargs: Any,
+) -> Any:
+    """创建题目会话并调用指定方法。"""
+    return call_problem_session(
+        problem_id,
+        pin,
+        lambda session: getattr(session, method_name)(*args, **kwargs),
+    )
+
+
 def serialize_problem(problem: Any) -> dict[str, Any]:
     """把题目对象压平成适合工具返回的结构。"""
     return {

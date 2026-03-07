@@ -1,6 +1,11 @@
 from typing import Optional
 
-from src.mcp.utils.common import get_problem_session, parse_enum, run_write_operation
+from src.mcp.utils.common import (
+    call_problem_session_method,
+    get_problem_session,
+    parse_enum,
+    run_write_operation,
+)
 from src.polygon.models import Package, PackageType
 
 
@@ -9,7 +14,7 @@ def get_problem_packages(
     pin: Optional[str] = None,
 ) -> list[Package]:
     """获取题目的历史包列表。"""
-    return get_problem_session(problem_id, pin).get_packages()
+    return call_problem_session_method(problem_id, pin, "get_packages")
 
 
 def download_problem_package(
@@ -22,7 +27,10 @@ def download_problem_package(
     package_type_enum = (
         parse_enum(PackageType, package_type, "package_type") if package_type is not None else None
     )
-    return get_problem_session(problem_id, pin).download_package(
+    return call_problem_session_method(
+        problem_id,
+        pin,
+        "download_package",
         package_id=package_id,
         package_type=package_type_enum,
     )
