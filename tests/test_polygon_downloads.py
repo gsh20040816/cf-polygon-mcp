@@ -83,17 +83,22 @@ class PolygonDownloadsTest(unittest.TestCase):
     def test_download_problem_package_info_by_url_returns_metadata(self, download_mock):
         result = download_problem_package_info_by_url(
             "https://polygon.codeforces.com/p/demo/a-plus-b",
+            pin="1234",
             revision=7,
             package_type="linux",
         )
 
         self.assertEqual(result["status"], "success")
         self.assertEqual(result["action"], "download_problem_package_info_by_url")
+        self.assertEqual(result["message"], "package.zip 下载元数据已生成")
         self.assertEqual(result["filename"], "package.zip")
         self.assertEqual(result["content_kind"], "zip")
         self.assertEqual(result["size_bytes"], 9)
         self.assertEqual(result["revision"], 7)
         self.assertEqual(result["package_type"], "linux")
+        self.assertEqual(result["result"]["filename"], "package.zip")
+        self.assertNotIn("pin", result)
+        self.assertNotIn("pin", result["result"])
         self.assertEqual(
             result["sha256"],
             "4b9a4ac59f3c3aa32273260df6cf4bf358d1c46f8415126aa35b6380d0abb8f7",

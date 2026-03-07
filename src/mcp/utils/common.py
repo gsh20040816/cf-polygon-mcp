@@ -1,9 +1,12 @@
 import os
 from enum import Enum
 from pathlib import Path
-from typing import Any, Optional, Type
+from typing import Any, Callable, Optional, Type
 
 from src.polygon.client import PolygonClient
+
+SENSITIVE_FIELD_NAMES = frozenset({"pin", "password", "api_secret", "apisig"})
+REDACTED_VALUE = "***"
 
 def get_api_credentials() -> tuple[str, str]:
     """获取API凭证"""
@@ -95,6 +98,24 @@ def is_ok_result(result: Any) -> bool:
     return result.get("status", "OK") in ("OK", "success")
 
 
+def _is_sensitive_field_name(field_name: str) -> bool:
+    return field_name.lower() in SENSITIVE_FIELD_NAMES
+
+
+def sanitize_sensitive_data(value: Any) -> Any:
+    """递归脱敏常见敏感字段，避免工具结果回显凭证。"""
+    if isinstance(value, dict):
+        return {
+            key: REDACTED_VALUE if _is_sensitive_field_name(str(key)) else sanitize_sensitive_data(item)
+            for key, item in value.items()
+        }
+    if isinstance(value, list):
+        return [sanitize_sensitive_data(item) for item in value]
+    if isinstance(value, tuple):
+        return tuple(sanitize_sensitive_data(item) for item in value)
+    return value
+
+
 def build_operation_result(
     *,
     action: str,
@@ -110,16 +131,45 @@ def build_operation_result(
         "status": status_override or ("success" if success else "error"),
         "action": action,
         "message": message,
+        "result": sanitize_sensitive_data(result),
+        "error": str(error) if error is not None else None,
+        "error_type": type(error).__name__ if error is not None else None,
     }
-    if result is not None:
-        payload["result"] = result
-    if error is not None:
-        payload["error"] = str(error)
-        payload["error_type"] = type(error).__name__
     for key, value in context.items():
-        if value is not None:
-            payload[key] = value
+        if value is None or _is_sensitive_field_name(str(key)):
+            continue
+        payload[key] = sanitize_sensitive_data(value)
     return payload
+
+
+def run_write_operation(
+    *,
+    action: str,
+    success_message: str,
+    failure_message: str,
+    operation: Callable[[], Any],
+    **context: Any,
+) -> dict[str, Any]:
+    """统一执行写操作并返回结构化结果。"""
+    try:
+        result = operation()
+    except Exception as exc:
+        return build_operation_result(
+            action=action,
+            success=False,
+            message=failure_message,
+            error=exc,
+            **context,
+        )
+
+    success = is_ok_result(result)
+    return build_operation_result(
+        action=action,
+        success=success,
+        message=success_message if success else failure_message,
+        result=result,
+        **context,
+    )
 
 
 def parse_enum(enum_type: Type[Enum], value: str, field_name: str):

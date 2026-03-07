@@ -45,7 +45,11 @@ class MpcUtilsExtensionsTest(unittest.TestCase):
             assets=["VALIDATOR"],
         )
 
-        self.assertEqual(result, {"saved": True})
+        self.assertEqual(result["status"], "success")
+        self.assertEqual(result["action"], "save_problem_file")
+        self.assertEqual(result["result"], {"saved": True})
+        self.assertIsNone(result["error"])
+        self.assertIsNone(result["error_type"])
         session.save_file.assert_called_once_with(
             file_type=FileType.RESOURCE,
             name="testlib.h",
@@ -74,7 +78,10 @@ class MpcUtilsExtensionsTest(unittest.TestCase):
                 source_type="checker",
             )
 
-        self.assertEqual(result, {"saved": True})
+        self.assertEqual(result["status"], "success")
+        self.assertEqual(result["action"], "save_problem_file")
+        self.assertEqual(result["result"], {"saved": True})
+        self.assertEqual(result["local_path"], str(local_file))
         session.save_file.assert_called_once_with(
             file_type=FileType.SOURCE,
             name="checker.cpp",
@@ -112,7 +119,9 @@ class MpcUtilsExtensionsTest(unittest.TestCase):
             dependencies=["pretests"],
         )
 
-        self.assertEqual(result, {"saved": True})
+        self.assertEqual(result["status"], "success")
+        self.assertEqual(result["action"], "save_problem_test_group")
+        self.assertEqual(result["result"], {"saved": True})
         session.save_test_group.assert_called_once_with(
             testset="tests",
             group="samples",
@@ -150,7 +159,9 @@ class MpcUtilsExtensionsTest(unittest.TestCase):
                 tag="MA",
             )
 
-        self.assertEqual(result, {"saved": True})
+        self.assertEqual(result["status"], "success")
+        self.assertEqual(result["action"], "save_problem_solution")
+        self.assertEqual(result["result"], {"saved": True})
         session.save_solution.assert_called_once_with(
             name="main.cpp",
             file_content="// solution\n",
@@ -160,23 +171,31 @@ class MpcUtilsExtensionsTest(unittest.TestCase):
         )
 
     def test_save_problem_solution_rejects_non_solution_source_type(self):
-        with self.assertRaisesRegex(ValueError, "只支持 solution 类型"):
-            save_problem_solution(
-                problem_id=1,
-                name="wa.cpp",
-                file_content="int main() {}",
-                source_type="checker",
-                tag="WA",
-            )
+        result = save_problem_solution(
+            problem_id=1,
+            name="wa.cpp",
+            file_content="int main() {}",
+            source_type="checker",
+            tag="WA",
+        )
+
+        self.assertEqual(result["status"], "error")
+        self.assertEqual(result["action"], "save_problem_solution")
+        self.assertEqual(result["error_type"], "ValueError")
+        self.assertIn("只支持 solution 类型", result["error"])
 
     def test_save_problem_script_requires_exactly_one_source_input(self):
-        with self.assertRaisesRegex(ValueError, "source 和 local_path 必须且只能提供一个"):
-            save_problem_script(
-                problem_id=1,
-                testset="tests",
-                source="gen 1",
-                local_path="generator.txt",
-            )
+        result = save_problem_script(
+            problem_id=1,
+            testset="tests",
+            source="gen 1",
+            local_path="generator.txt",
+        )
+
+        self.assertEqual(result["status"], "error")
+        self.assertEqual(result["action"], "save_problem_script")
+        self.assertEqual(result["error_type"], "ValueError")
+        self.assertIn("source 和 local_path 必须且只能提供一个", result["error"])
 
     @patch("src.mcp.utils.problem_save_statement.get_client")
     def test_save_problem_statement_returns_statement_snapshot(self, get_client_mock):
@@ -272,7 +291,7 @@ class MpcUtilsExtensionsTest(unittest.TestCase):
         self.assertEqual(result["status"], "success")
         self.assertEqual(result["action"], "update_problem_working_copy")
         self.assertEqual(result["problem"]["revision"], 5)
-        self.assertEqual(result["pin"], "1234")
+        self.assertNotIn("pin", result)
         session.client.get_problems.assert_called_once_with(problem_id=1)
 
     @patch("src.mcp.utils.problem_working_copy.get_problem_session")

@@ -1,6 +1,6 @@
 from typing import Optional
 
-from src.mcp.utils.common import get_problem_session, parse_enum
+from src.mcp.utils.common import get_problem_session, parse_enum, run_write_operation
 from src.polygon.models import Package, PackageType
 
 
@@ -35,7 +35,15 @@ def build_problem_package(
     pin: Optional[str] = None,
 ):
     """触发一次题目打包。"""
-    return get_problem_session(problem_id, pin).build_package(full=full, verify=verify)
+    return run_write_operation(
+        action="build_problem_package",
+        success_message="题目包构建已触发",
+        failure_message="题目包构建触发失败",
+        operation=lambda: get_problem_session(problem_id, pin).build_package(full=full, verify=verify),
+        problem_id=problem_id,
+        full=full,
+        verify=verify,
+    )
 
 
 def commit_problem_changes(
@@ -45,7 +53,15 @@ def commit_problem_changes(
     message: Optional[str] = None,
 ):
     """提交工作副本修改。"""
-    return get_problem_session(problem_id, pin).commit_changes(
+    return run_write_operation(
+        action="commit_problem_changes",
+        success_message="工作副本修改已提交",
+        failure_message="工作副本修改提交失败",
+        operation=lambda: get_problem_session(problem_id, pin).commit_changes(
+            minor_changes=minor_changes,
+            message=message,
+        ),
+        problem_id=problem_id,
         minor_changes=minor_changes,
         message=message,
     )

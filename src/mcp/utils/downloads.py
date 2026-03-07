@@ -1,7 +1,7 @@
 import hashlib
 from typing import Optional
 
-from src.mcp.utils.common import get_account_credentials
+from src.mcp.utils.common import build_operation_result, get_account_credentials
 from src.polygon.download import (
     download_contest_descriptor as _download_contest_descriptor,
     download_contest_statements_pdf as _download_contest_statements_pdf,
@@ -19,9 +19,7 @@ def _build_download_info(
     content: bytes,
     **context,
 ) -> dict:
-    return {
-        "status": "success",
-        "action": action,
+    metadata = {
         "source_url": source_url,
         "filename": filename,
         "content_kind": content_kind,
@@ -29,6 +27,13 @@ def _build_download_info(
         "sha256": hashlib.sha256(content).hexdigest(),
         **{key: value for key, value in context.items() if value is not None},
     }
+    return build_operation_result(
+        action=action,
+        success=True,
+        message=f"{filename} 下载元数据已生成",
+        result=metadata,
+        **metadata,
+    )
 
 
 def download_problem_package_by_url(
@@ -87,7 +92,6 @@ def download_problem_package_info_by_url(
         filename="package.zip",
         content_kind="zip",
         content=content,
-        pin=pin,
         revision=revision,
         package_type=package_type,
     )
@@ -132,7 +136,6 @@ def download_problem_descriptor_info(
         filename="problem.xml",
         content_kind="xml",
         content=content,
-        pin=pin,
         revision=revision,
     )
 
@@ -172,7 +175,6 @@ def download_contest_descriptor_info(
         filename="contest.xml",
         content_kind="xml",
         content=content,
-        pin=pin,
     )
 
 
@@ -216,5 +218,4 @@ def download_contest_statements_pdf_info(
         content_kind="pdf",
         content=content,
         language=language,
-        pin=pin,
     )

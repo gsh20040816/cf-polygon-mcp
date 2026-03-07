@@ -46,24 +46,33 @@ def update_problem_info(
         if value is not None
     }
 
-    session = get_problem_session(problem_id, pin)
-    result = session.update_info(
-        input_file=input_file,
-        output_file=output_file,
-        time_limit=time_limit,
-        memory_limit=memory_limit,
-        interactive=interactive,
-    )
+    try:
+        session = get_problem_session(problem_id, pin)
+        result = session.update_info(
+            input_file=input_file,
+            output_file=output_file,
+            time_limit=time_limit,
+            memory_limit=memory_limit,
+            interactive=interactive,
+        )
 
-    success = is_ok_result(result)
-    updated_info = session.get_info() if success else None
-    return build_operation_result(
-        action="update_problem_info",
-        success=success,
-        message="题目信息更新成功" if success else "题目信息更新失败",
-        result=result,
-        problem_id=problem_id,
-        pin=pin,
-        requested_changes=requested_changes,
-        problem_info=serialize_problem_info(updated_info) if updated_info is not None else None,
-    )
+        success = is_ok_result(result)
+        updated_info = session.get_info() if success else None
+        return build_operation_result(
+            action="update_problem_info",
+            success=success,
+            message="题目信息更新成功" if success else "题目信息更新失败",
+            result=result,
+            problem_id=problem_id,
+            requested_changes=requested_changes,
+            problem_info=serialize_problem_info(updated_info) if updated_info is not None else None,
+        )
+    except Exception as exc:
+        return build_operation_result(
+            action="update_problem_info",
+            success=False,
+            message="题目信息更新失败",
+            error=exc,
+            problem_id=problem_id,
+            requested_changes=requested_changes,
+        )

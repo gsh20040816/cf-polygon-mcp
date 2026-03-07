@@ -34,6 +34,7 @@ class MpcPackageWorkflowTest(unittest.TestCase):
             problem_id=1,
             full=True,
             verify=True,
+            pin="1234",
             timeout_seconds=10,
             poll_interval_seconds=0.01,
         )
@@ -43,6 +44,8 @@ class MpcPackageWorkflowTest(unittest.TestCase):
         self.assertEqual(result["request"]["problem_id"], 1)
         self.assertEqual(result["request"]["full"], True)
         self.assertEqual(result["request"]["verify"], True)
+        self.assertNotIn("pin", result)
+        self.assertNotIn("pin", result["request"])
         self.assertEqual(result["matched_by"], "new_package")
         self.assertEqual(result["package"]["id"], 2)
         self.assertEqual(result["package"]["state"], "READY")

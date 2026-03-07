@@ -1,6 +1,6 @@
 from typing import Optional
 
-from src.mcp.utils.common import get_problem_session, parse_enum
+from src.mcp.utils.common import get_problem_session, parse_enum, run_write_operation
 from src.polygon.models import (
     CheckerTest,
     CheckerTestVerdict,
@@ -59,17 +59,27 @@ def save_problem_test(
     check_existing: Optional[bool] = None,
 ):
     """保存一个测试。"""
-    return get_problem_session(problem_id, pin).save_test(
+    return run_write_operation(
+        action="save_problem_test",
+        success_message="题目测试已保存",
+        failure_message="题目测试保存失败",
+        operation=lambda: get_problem_session(problem_id, pin).save_test(
+            testset=testset,
+            test_index=test_index,
+            test_input=test_input,
+            test_group=test_group,
+            test_points=test_points,
+            test_description=test_description,
+            test_use_in_statements=test_use_in_statements,
+            test_input_for_statements=test_input_for_statements,
+            test_output_for_statements=test_output_for_statements,
+            verify_input_output_for_statements=verify_input_output_for_statements,
+            check_existing=check_existing,
+        ),
+        problem_id=problem_id,
         testset=testset,
         test_index=test_index,
-        test_input=test_input,
         test_group=test_group,
-        test_points=test_points,
-        test_description=test_description,
-        test_use_in_statements=test_use_in_statements,
-        test_input_for_statements=test_input_for_statements,
-        test_output_for_statements=test_output_for_statements,
-        verify_input_output_for_statements=verify_input_output_for_statements,
         check_existing=check_existing,
     )
 
@@ -93,15 +103,22 @@ def save_problem_validator_test(
     check_existing: Optional[bool] = None,
 ):
     """保存一个 validator 测试。"""
-    verdict_enum = (
-        parse_enum(ValidatorTestVerdict, test_verdict, "test_verdict")
-        if test_verdict is not None
-        else None
-    )
-    return get_problem_session(problem_id, pin).save_validator_test(
+    return run_write_operation(
+        action="save_problem_validator_test",
+        success_message="validator 测试已保存",
+        failure_message="validator 测试保存失败",
+        operation=lambda: _save_problem_validator_test(
+            problem_id=problem_id,
+            test_index=test_index,
+            pin=pin,
+            test_verdict=test_verdict,
+            test_input=test_input,
+            test_group=test_group,
+            testset=testset,
+            check_existing=check_existing,
+        ),
+        problem_id=problem_id,
         test_index=test_index,
-        test_verdict=verdict_enum,
-        test_input=test_input,
         test_group=test_group,
         testset=testset,
         check_existing=check_existing,
@@ -127,17 +144,22 @@ def save_problem_checker_test(
     check_existing: Optional[bool] = None,
 ):
     """保存一个 checker 测试。"""
-    verdict_enum = (
-        parse_enum(CheckerTestVerdict, test_verdict, "test_verdict")
-        if test_verdict is not None
-        else None
-    )
-    return get_problem_session(problem_id, pin).save_checker_test(
+    return run_write_operation(
+        action="save_problem_checker_test",
+        success_message="checker 测试已保存",
+        failure_message="checker 测试保存失败",
+        operation=lambda: _save_problem_checker_test(
+            problem_id=problem_id,
+            test_index=test_index,
+            pin=pin,
+            test_verdict=test_verdict,
+            test_input=test_input,
+            test_output=test_output,
+            test_answer=test_answer,
+            check_existing=check_existing,
+        ),
+        problem_id=problem_id,
         test_index=test_index,
-        test_verdict=verdict_enum,
-        test_input=test_input,
-        test_output=test_output,
-        test_answer=test_answer,
         check_existing=check_existing,
     )
 
@@ -162,6 +184,152 @@ def save_problem_test_group(
     dependencies: Optional[list[str]] = None,
 ):
     """保存测试组配置。"""
+    return run_write_operation(
+        action="save_problem_test_group",
+        success_message="测试组配置已保存",
+        failure_message="测试组配置保存失败",
+        operation=lambda: _save_problem_test_group(
+            problem_id=problem_id,
+            testset=testset,
+            group=group,
+            pin=pin,
+            points_policy=points_policy,
+            feedback_policy=feedback_policy,
+            dependencies=dependencies,
+        ),
+        problem_id=problem_id,
+        testset=testset,
+        group=group,
+        dependencies=dependencies,
+    )
+
+
+def set_problem_test_group(
+    problem_id: int,
+    testset: str,
+    test_group: str,
+    pin: Optional[str] = None,
+    test_index: Optional[int] = None,
+    test_indices: Optional[list[int]] = None,
+):
+    """把测试分配到某个测试组。"""
+    return run_write_operation(
+        action="set_problem_test_group",
+        success_message="测试组分配已更新",
+        failure_message="测试组分配更新失败",
+        operation=lambda: get_problem_session(problem_id, pin).set_test_group(
+            testset=testset,
+            test_group=test_group,
+            test_index=test_index,
+            test_indices=test_indices,
+        ),
+        problem_id=problem_id,
+        testset=testset,
+        test_group=test_group,
+        test_index=test_index,
+        test_indices=test_indices,
+    )
+
+
+def enable_problem_groups(
+    problem_id: int,
+    testset: str,
+    enable: bool,
+    pin: Optional[str] = None,
+):
+    """启用或关闭测试组。"""
+    return run_write_operation(
+        action="enable_problem_groups",
+        success_message="测试组开关已更新",
+        failure_message="测试组开关更新失败",
+        operation=lambda: get_problem_session(problem_id, pin).enable_groups(
+            testset=testset,
+            enable=enable,
+        ),
+        problem_id=problem_id,
+        testset=testset,
+        enable=enable,
+    )
+
+
+def enable_problem_points(
+    problem_id: int,
+    enable: bool,
+    pin: Optional[str] = None,
+):
+    """启用或关闭点数模式。"""
+    return run_write_operation(
+        action="enable_problem_points",
+        success_message="点数模式开关已更新",
+        failure_message="点数模式开关更新失败",
+        operation=lambda: get_problem_session(problem_id, pin).enable_points(enable=enable),
+        problem_id=problem_id,
+        enable=enable,
+    )
+
+
+def _save_problem_validator_test(
+    *,
+    problem_id: int,
+    test_index: int,
+    pin: Optional[str],
+    test_verdict: Optional[str],
+    test_input: Optional[str],
+    test_group: Optional[str],
+    testset: Optional[str],
+    check_existing: Optional[bool],
+):
+    verdict_enum = (
+        parse_enum(ValidatorTestVerdict, test_verdict, "test_verdict")
+        if test_verdict is not None
+        else None
+    )
+    return get_problem_session(problem_id, pin).save_validator_test(
+        test_index=test_index,
+        test_verdict=verdict_enum,
+        test_input=test_input,
+        test_group=test_group,
+        testset=testset,
+        check_existing=check_existing,
+    )
+
+
+def _save_problem_checker_test(
+    *,
+    problem_id: int,
+    test_index: int,
+    pin: Optional[str],
+    test_verdict: Optional[str],
+    test_input: Optional[str],
+    test_output: Optional[str],
+    test_answer: Optional[str],
+    check_existing: Optional[bool],
+):
+    verdict_enum = (
+        parse_enum(CheckerTestVerdict, test_verdict, "test_verdict")
+        if test_verdict is not None
+        else None
+    )
+    return get_problem_session(problem_id, pin).save_checker_test(
+        test_index=test_index,
+        test_verdict=verdict_enum,
+        test_input=test_input,
+        test_output=test_output,
+        test_answer=test_answer,
+        check_existing=check_existing,
+    )
+
+
+def _save_problem_test_group(
+    *,
+    problem_id: int,
+    testset: str,
+    group: str,
+    pin: Optional[str],
+    points_policy: Optional[str],
+    feedback_policy: Optional[str],
+    dependencies: Optional[list[str]],
+):
     points_policy_enum = (
         parse_enum(PointsPolicy, points_policy, "points_policy")
         if points_policy is not None
@@ -179,39 +347,3 @@ def save_problem_test_group(
         feedback_policy=feedback_policy_enum,
         dependencies=dependencies,
     )
-
-
-def set_problem_test_group(
-    problem_id: int,
-    testset: str,
-    test_group: str,
-    pin: Optional[str] = None,
-    test_index: Optional[int] = None,
-    test_indices: Optional[list[int]] = None,
-):
-    """把测试分配到某个测试组。"""
-    return get_problem_session(problem_id, pin).set_test_group(
-        testset=testset,
-        test_group=test_group,
-        test_index=test_index,
-        test_indices=test_indices,
-    )
-
-
-def enable_problem_groups(
-    problem_id: int,
-    testset: str,
-    enable: bool,
-    pin: Optional[str] = None,
-):
-    """启用或关闭测试组。"""
-    return get_problem_session(problem_id, pin).enable_groups(testset=testset, enable=enable)
-
-
-def enable_problem_points(
-    problem_id: int,
-    enable: bool,
-    pin: Optional[str] = None,
-):
-    """启用或关闭点数模式。"""
-    return get_problem_session(problem_id, pin).enable_points(enable=enable)
