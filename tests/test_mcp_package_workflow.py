@@ -1,33 +1,23 @@
-from datetime import datetime
 import unittest
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 from src.mcp.utils.problem_package_workflow import build_problem_package_and_wait
-from src.polygon.models import Package, PackageState, PackageType
-
-
-def _package(package_id: int, state: PackageState) -> Package:
-    return Package(
-        id=package_id,
-        revision=10,
-        creationTimeSeconds=datetime(2024, 1, 1, 0, 0, package_id),
-        state=state,
-        comment="build",
-        type=PackageType.STANDARD,
-    )
+from src.polygon.models import PackageState
+from tests.fake_problem_session import FakeProblemSession, SequenceValue, make_package
 
 
 class MpcPackageWorkflowTest(unittest.TestCase):
     @patch("src.mcp.utils.problem_package_workflow.time.sleep")
     @patch("src.mcp.utils.problem_package_workflow.get_problem_session")
     def test_build_problem_package_and_wait_returns_ready_package(self, session_mock, _sleep_mock):
-        session = Mock()
-        session.get_packages.side_effect = [
-            [_package(1, PackageState.READY)],
-            [_package(1, PackageState.READY), _package(2, PackageState.PENDING)],
-            [_package(1, PackageState.READY), _package(2, PackageState.READY)],
-        ]
-        session.build_package.return_value = {"ok": True}
+        session = FakeProblemSession(
+            packages=SequenceValue(
+                [make_package(1, PackageState.READY)],
+                [make_package(1, PackageState.READY), make_package(2, PackageState.PENDING)],
+                [make_package(1, PackageState.READY), make_package(2, PackageState.READY)],
+            ),
+            build_package_result={"ok": True},
+        )
         session_mock.return_value = session
 
         result = build_problem_package_and_wait(
@@ -53,18 +43,19 @@ class MpcPackageWorkflowTest(unittest.TestCase):
             [item["state"] for item in result["package_history"]],
             ["PENDING", "READY"],
         )
-        session.build_package.assert_called_once_with(full=True, verify=True)
+        self.assertEqual(session.calls["build_package"], [{"full": True, "verify": True}])
 
     @patch("src.mcp.utils.problem_package_workflow.time.sleep")
     @patch("src.mcp.utils.problem_package_workflow.get_problem_session")
     def test_build_problem_package_and_wait_returns_failed_package(self, session_mock, _sleep_mock):
-        session = Mock()
-        session.get_packages.side_effect = [
-            [],
-            [_package(7, PackageState.RUNNING)],
-            [_package(7, PackageState.FAILED)],
-        ]
-        session.build_package.return_value = {"packageId": 7}
+        session = FakeProblemSession(
+            packages=SequenceValue(
+                [],
+                [make_package(7, PackageState.RUNNING)],
+                [make_package(7, PackageState.FAILED)],
+            ),
+            build_package_result={"packageId": 7},
+        )
         session_mock.return_value = session
 
         result = build_problem_package_and_wait(
@@ -88,9 +79,10 @@ class MpcPackageWorkflowTest(unittest.TestCase):
         session_mock,
         _sleep_mock,
     ):
-        session = Mock()
-        session.get_packages.return_value = [_package(1, PackageState.READY)]
-        session.build_package.return_value = {"queued": True}
+        session = FakeProblemSession(
+            packages=[make_package(1, PackageState.READY)],
+            build_package_result={"queued": True},
+        )
         session_mock.return_value = session
 
         with patch(
@@ -110,6 +102,45 @@ class MpcPackageWorkflowTest(unittest.TestCase):
         self.assertEqual(result["target_package_id"], None)
         self.assertEqual(result["package_history"], [])
         self.assertIsNone(result["package"])
+
+    def test_build_problem_package_and_wait_returns_structured_error_for_invalid_timeout(self):
+        result = build_problem_package_and_wait(
+            problem_id=1,
+            full=True,
+            verify=True,
+            timeout_seconds=0,
+            poll_interval_seconds=0.01,
+        )
+
+        self.assertEqual(result["status"], "error")
+        self.assertEqual(result["error_type"], "ValueError")
+        self.assertIn("timeout_seconds 必须大于 0", result["error"])
+
+    @patch("src.mcp.utils.problem_package_workflow.time.sleep")
+    @patch("src.mcp.utils.problem_package_workflow.get_problem_session")
+    def test_build_problem_package_and_wait_reports_polling_exception(self, session_mock, _sleep_mock):
+        session = FakeProblemSession(
+            packages=SequenceValue(
+                [],
+                RuntimeError("poll failed"),
+            ),
+            build_package_result={"packageId": 3},
+        )
+        session_mock.return_value = session
+
+        result = build_problem_package_and_wait(
+            problem_id=1,
+            full=True,
+            verify=True,
+            timeout_seconds=5,
+            poll_interval_seconds=0.01,
+        )
+
+        self.assertEqual(result["status"], "error")
+        self.assertEqual(result["message"], "题目包构建流程失败")
+        self.assertEqual(result["error_type"], "RuntimeError")
+        self.assertIn("poll failed", result["error"])
+        self.assertEqual(result["target_package_id"], 3)
 
 
 if __name__ == "__main__":

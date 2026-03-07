@@ -1,138 +1,59 @@
-from datetime import datetime
 import unittest
 from unittest.mock import Mock, patch
 
 from src.mcp.utils.problem_readiness import check_problem_readiness
-from src.polygon.models import (
-    AccessType,
-    FeedbackPolicy,
-    File,
-    Package,
-    PackageState,
-    PackageType,
-    PointsPolicy,
-    ProblemInfo,
-    Solution,
-    SolutionTag,
-    SourceType,
-    Statement,
-    Test,
-    TestGroup,
+from src.polygon.models import PackageState, SolutionTag
+from tests.fake_problem_session import (
+    FakeProblemSession,
+    make_package,
+    make_problem,
+    make_problem_files,
+    make_problem_info,
+    make_solution,
+    make_statement,
+    make_test,
+    make_test_group,
 )
-
-
-class _StatementMap:
-    def __init__(self, items):
-        self._items = items
-
-    def as_dict(self):
-        return self._items
-
-
-def _ready_package() -> Package:
-    return Package(
-        id=1,
-        revision=1,
-        creationTimeSeconds=datetime(2024, 1, 1, 0, 0, 1),
-        state=PackageState.READY,
-        comment="ok",
-        type=PackageType.STANDARD,
-    )
-
-
-def _solution(name: str, tag: SolutionTag) -> Solution:
-    return Solution(
-        name=name,
-        modificationTimeSeconds=datetime(2024, 1, 1, 0, 0, 1),
-        length=100,
-        sourceType=SourceType.SOLUTION,
-        tag=tag,
-    )
-
-
-def _problem_meta(
-    revision: int = 1,
-    latest_package: int | None = 1,
-    modified: bool = True,
-):
-    problem = Mock()
-    problem.id = 1
-    problem.name = "A + B"
-    problem.accessType = AccessType.OWNER
-    problem.revision = revision
-    problem.latestPackage = latest_package
-    problem.modified = modified
-    return problem
-
-
-def _source_file(name: str):
-    return File(
-        name=name,
-        modificationTimeSeconds=datetime(2024, 1, 1, 0, 0, 1),
-        length=100,
-        sourceType=SourceType.MAIN,
-    )
-
-
-def _problem_files(*source_names: str):
-    files = Mock()
-    files.resourceFiles = []
-    files.sourceFiles = [_source_file(name) for name in source_names]
-    files.auxFiles = []
-    return files
 
 
 class MpcProblemReadinessTest(unittest.TestCase):
     @patch("src.mcp.utils.problem_readiness.get_problem_session")
     def test_check_problem_readiness_reports_ready_problem(self, session_mock):
-        session = Mock()
-        session.client.get_problems.return_value = [_problem_meta(modified=False)]
-        session.get_info.return_value = ProblemInfo(
-            inputFile="input.txt",
-            outputFile="output.txt",
-            interactive=False,
-            timeLimit=2000,
-            memoryLimit=256,
-        )
-        session.get_statements.return_value = _StatementMap(
-            {
-                "english": Statement(
-                    encoding="utf-8",
-                    name="A + B",
-                    legend="desc",
-                    input="in",
-                    output="out",
-                )
-            }
-        )
-        session.get_validator.return_value = "validator.cpp"
-        session.get_checker.return_value = "checker.cpp"
-        session.get_interactor.return_value = ""
-        session.get_extra_validators.return_value = ["validator-extra.cpp"]
-        session.get_files.return_value = _problem_files(
-            "validator.cpp",
-            "checker.cpp",
-            "validator-extra.cpp",
-        )
-        session.get_tests.return_value = [
-            Test(
-                index=1,
-                manual=True,
-                input="1 2",
-                useInStatements=True,
-                inputForStatement="1 2",
-                outputForStatement="3",
-                verifyInputOutputForStatements=True,
+        session = FakeProblemSession(
+            problems=[make_problem(modified=False)],
+            info=make_problem_info(
+                input_file="input.txt",
+                output_file="output.txt",
+                interactive=False,
+                time_limit=2000,
+                memory_limit=256,
             ),
-        ]
-        session.get_solutions.return_value = [
-            _solution("main.cpp", SolutionTag.MA),
-            _solution("wa.cpp", SolutionTag.WA),
-        ]
-        session.get_validator_tests.return_value = [Mock()]
-        session.get_checker_tests.return_value = [Mock()]
-        session.get_packages.return_value = [_ready_package()]
-        session.get_general_tutorial.return_value = "tutorial"
+            statements={"english": make_statement()},
+            validator="validator.cpp",
+            checker="checker.cpp",
+            interactor="",
+            extra_validators=["validator-extra.cpp"],
+            files=make_problem_files("validator.cpp", "checker.cpp", "validator-extra.cpp"),
+            tests=[
+                make_test(
+                    index=1,
+                    manual=True,
+                    input_text="1 2",
+                    use_in_statements=True,
+                    input_for_statement="1 2",
+                    output_for_statement="3",
+                    verify_statement_io=True,
+                )
+            ],
+            solutions=[
+                make_solution("main.cpp", SolutionTag.MA),
+                make_solution("wa.cpp", SolutionTag.WA),
+            ],
+            validator_tests=[Mock()],
+            checker_tests=[Mock()],
+            packages=[make_package(1, PackageState.READY)],
+            general_tutorial="tutorial",
+        )
         session_mock.return_value = session
 
         result = check_problem_readiness(problem_id=1)
@@ -149,25 +70,26 @@ class MpcProblemReadinessTest(unittest.TestCase):
 
     @patch("src.mcp.utils.problem_readiness.get_problem_session")
     def test_check_problem_readiness_reports_blocking_issues(self, session_mock):
-        session = Mock()
-        session.client.get_problems.return_value = [_problem_meta()]
-        session.get_info.return_value = ProblemInfo(
-            inputFile="input.txt",
-            outputFile="output.txt",
-            interactive=True,
-            timeLimit=2000,
-            memoryLimit=256,
+        session = FakeProblemSession(
+            problems=[make_problem(modified=True)],
+            info=make_problem_info(
+                input_file="input.txt",
+                output_file="output.txt",
+                interactive=True,
+                time_limit=2000,
+                memory_limit=256,
+            ),
+            statements={},
+            validator="",
+            checker="",
+            interactor="",
+            extra_validators=[],
+            files=make_problem_files(),
+            tests=[],
+            solutions=[],
+            packages=[],
+            general_tutorial="",
         )
-        session.get_statements.return_value = _StatementMap({})
-        session.get_validator.return_value = ""
-        session.get_checker.return_value = ""
-        session.get_interactor.return_value = ""
-        session.get_extra_validators.return_value = []
-        session.get_files.return_value = _problem_files()
-        session.get_tests.return_value = []
-        session.get_solutions.return_value = []
-        session.get_packages.return_value = []
-        session.get_general_tutorial.return_value = ""
         session_mock.return_value = session
 
         result = check_problem_readiness(problem_id=1)
@@ -186,38 +108,29 @@ class MpcProblemReadinessTest(unittest.TestCase):
 
     @patch("src.mcp.utils.problem_readiness.get_problem_session")
     def test_check_problem_readiness_reports_non_blocking_warnings(self, session_mock):
-        session = Mock()
-        session.client.get_problems.return_value = [_problem_meta(modified=False, latest_package=None)]
-        session.get_info.return_value = ProblemInfo(
-            inputFile="stdin",
-            outputFile="stdout",
-            interactive=False,
-            timeLimit=1000,
-            memoryLimit=256,
+        session = FakeProblemSession(
+            problems=[make_problem(modified=False, latest_package=None)],
+            info=make_problem_info(
+                input_file="stdin",
+                output_file="stdout",
+                interactive=False,
+                time_limit=1000,
+                memory_limit=256,
+            ),
+            statements={
+                "russian": make_statement(name="sum"),
+            },
+            validator="validator.cpp",
+            checker="",
+            interactor="interactor.cpp",
+            extra_validators=[],
+            files=make_problem_files("validator.cpp"),
+            tests=[make_test(index=1, manual=True, input_text="1 2", use_in_statements=False)],
+            solutions=[make_solution("ok.cpp", SolutionTag.OK)],
+            validator_tests=[],
+            packages=[],
+            general_tutorial="",
         )
-        session.get_statements.return_value = _StatementMap(
-            {
-                "russian": Statement(
-                    encoding="utf-8",
-                    name="sum",
-                    legend="desc",
-                    input="in",
-                    output="out",
-                )
-            }
-        )
-        session.get_validator.return_value = "validator.cpp"
-        session.get_checker.return_value = ""
-        session.get_interactor.return_value = "interactor.cpp"
-        session.get_extra_validators.return_value = []
-        session.get_files.return_value = _problem_files("validator.cpp")
-        session.get_tests.return_value = [
-            Test(index=1, manual=True, input="1 2", useInStatements=False),
-        ]
-        session.get_solutions.return_value = [_solution("ok.cpp", SolutionTag.OK)]
-        session.get_validator_tests.return_value = []
-        session.get_packages.return_value = []
-        session.get_general_tutorial.return_value = ""
         session_mock.return_value = session
 
         result = check_problem_readiness(problem_id=1)
@@ -242,42 +155,25 @@ class MpcProblemReadinessTest(unittest.TestCase):
         self,
         session_mock,
     ):
-        session = Mock()
-        session.client.get_problems.return_value = [_problem_meta(modified=False)]
-        session.get_info.return_value = ProblemInfo(
-            inputFile="stdin",
-            outputFile="stdout",
-            interactive=False,
-            timeLimit=1000,
-            memoryLimit=256,
+        session = FakeProblemSession(
+            problems=[make_problem(modified=False)],
+            info=make_problem_info(interactive=False),
+            statements={"english": make_statement(name="sum")},
+            validator="validator.cpp",
+            checker="checker.cpp",
+            interactor=RuntimeError("not interactive"),
+            extra_validators=[],
+            files=make_problem_files("validator.cpp", "checker.cpp"),
+            tests=[make_test(index=1, manual=True, input_text="1 2", use_in_statements=True)],
+            solutions=[
+                make_solution("main.cpp", SolutionTag.MA),
+                make_solution("wa.cpp", SolutionTag.WA),
+            ],
+            validator_tests=[Mock()],
+            checker_tests=[Mock()],
+            packages=[make_package(1, PackageState.READY)],
+            general_tutorial="tutorial",
         )
-        session.get_statements.return_value = _StatementMap(
-            {
-                "english": Statement(
-                    encoding="utf-8",
-                    name="sum",
-                    legend="desc",
-                    input="in",
-                    output="out",
-                )
-            }
-        )
-        session.get_validator.return_value = "validator.cpp"
-        session.get_checker.return_value = "checker.cpp"
-        session.get_interactor.side_effect = RuntimeError("not interactive")
-        session.get_extra_validators.return_value = []
-        session.get_files.return_value = _problem_files("validator.cpp", "checker.cpp")
-        session.get_tests.return_value = [
-            Test(index=1, manual=True, input="1 2", useInStatements=True),
-        ]
-        session.get_solutions.return_value = [
-            _solution("main.cpp", SolutionTag.MA),
-            _solution("wa.cpp", SolutionTag.WA),
-        ]
-        session.get_validator_tests.return_value = [Mock()]
-        session.get_checker_tests.return_value = [Mock()]
-        session.get_packages.return_value = [_ready_package()]
-        session.get_general_tutorial.return_value = "tutorial"
         session_mock.return_value = session
 
         result = check_problem_readiness(problem_id=1)
@@ -288,51 +184,36 @@ class MpcProblemReadinessTest(unittest.TestCase):
 
     @patch("src.mcp.utils.problem_readiness.get_problem_session")
     def test_check_problem_readiness_reports_local_workflow_gaps(self, session_mock):
-        session = Mock()
-        session.client.get_problems.return_value = [_problem_meta()]
-        session.get_info.return_value = ProblemInfo(
-            inputFile="stdin",
-            outputFile="stdout",
-            interactive=True,
-            timeLimit=2000,
-            memoryLimit=256,
-        )
-        session.get_statements.return_value = _StatementMap(
-            {
-                "english": Statement(
-                    encoding="utf-8",
-                    name="Interactive",
-                    legend="desc",
-                    input="in",
-                    output="out",
-                    scoring=None,
+        session = FakeProblemSession(
+            problems=[make_problem(modified=True)],
+            info=make_problem_info(interactive=True, time_limit=2000),
+            statements={"english": make_statement(name="Interactive", scoring=None)},
+            validator="validator.cpp",
+            checker="checker.cpp",
+            interactor="interactor.cpp",
+            extra_validators=["validator-extra.cpp"],
+            files=make_problem_files("validator.cpp", "checker.cpp"),
+            tests=[
+                make_test(
+                    index=1,
+                    manual=False,
+                    use_in_statements=True,
+                    input_for_statement="1",
+                    output_for_statement=None,
+                    verify_statement_io=False,
+                    points=30,
                 )
-            }
+            ],
+            scripts={"tests": b""},
+            solutions=[
+                make_solution("main.cpp", SolutionTag.MA),
+                make_solution("wa.cpp", SolutionTag.WA),
+            ],
+            validator_tests=[Mock()],
+            checker_tests=[Mock()],
+            packages=[make_package(1, PackageState.READY)],
+            general_tutorial="tutorial",
         )
-        session.get_validator.return_value = "validator.cpp"
-        session.get_checker.return_value = "checker.cpp"
-        session.get_interactor.return_value = "interactor.cpp"
-        session.get_extra_validators.return_value = ["validator-extra.cpp"]
-        session.get_files.return_value = _problem_files("validator.cpp", "checker.cpp")
-        session.get_tests.return_value = [
-            Test(
-                index=1,
-                manual=False,
-                useInStatements=True,
-                inputForStatement="1",
-                verifyInputOutputForStatements=False,
-                points=30,
-            )
-        ]
-        session.view_script.return_value = b""
-        session.get_solutions.return_value = [
-            _solution("main.cpp", SolutionTag.MA),
-            _solution("wa.cpp", SolutionTag.WA),
-        ]
-        session.get_validator_tests.return_value = [Mock()]
-        session.get_checker_tests.return_value = [Mock()]
-        session.get_packages.return_value = [_ready_package()]
-        session.get_general_tutorial.return_value = "tutorial"
         session_mock.return_value = session
 
         result = check_problem_readiness(problem_id=1)
@@ -353,72 +234,49 @@ class MpcProblemReadinessTest(unittest.TestCase):
 
     @patch("src.mcp.utils.problem_readiness.get_problem_session")
     def test_check_problem_readiness_reports_test_group_gaps(self, session_mock):
-        session = Mock()
-        session.client.get_problems.return_value = [_problem_meta(modified=False)]
-        session.get_info.return_value = ProblemInfo(
-            inputFile="stdin",
-            outputFile="stdout",
-            interactive=False,
-            timeLimit=2000,
-            memoryLimit=256,
+        session = FakeProblemSession(
+            problems=[make_problem(modified=False)],
+            info=make_problem_info(time_limit=2000),
+            statements={"english": make_statement(name="Grouped")},
+            validator="validator.cpp",
+            checker="checker.cpp",
+            interactor="",
+            extra_validators=[],
+            files=make_problem_files("validator.cpp", "checker.cpp"),
+            tests=[
+                make_test(
+                    index=1,
+                    manual=True,
+                    input_text="1 2",
+                    use_in_statements=True,
+                    input_for_statement="1 2",
+                    output_for_statement="3",
+                    verify_statement_io=True,
+                    group="samples",
+                ),
+                make_test(
+                    index=2,
+                    manual=True,
+                    input_text="2 3",
+                    use_in_statements=False,
+                    group="missing-group",
+                ),
+            ],
+            test_groups={
+                "tests": [
+                    make_test_group("samples", dependencies=[]),
+                    make_test_group("unused", dependencies=["ghost"]),
+                ]
+            },
+            solutions=[
+                make_solution("main.cpp", SolutionTag.MA),
+                make_solution("wa.cpp", SolutionTag.WA),
+            ],
+            validator_tests=[Mock()],
+            checker_tests=[Mock()],
+            packages=[make_package(1, PackageState.READY)],
+            general_tutorial="tutorial",
         )
-        session.get_statements.return_value = _StatementMap(
-            {
-                "english": Statement(
-                    encoding="utf-8",
-                    name="Grouped",
-                    legend="desc",
-                    input="in",
-                    output="out",
-                )
-            }
-        )
-        session.get_validator.return_value = "validator.cpp"
-        session.get_checker.return_value = "checker.cpp"
-        session.get_interactor.return_value = ""
-        session.get_extra_validators.return_value = []
-        session.get_files.return_value = _problem_files("validator.cpp", "checker.cpp")
-        session.get_tests.return_value = [
-            Test(
-                index=1,
-                manual=True,
-                input="1 2",
-                useInStatements=True,
-                inputForStatement="1 2",
-                outputForStatement="3",
-                verifyInputOutputForStatements=True,
-                group="samples",
-            ),
-            Test(
-                index=2,
-                manual=True,
-                input="2 3",
-                useInStatements=False,
-                group="missing-group",
-            ),
-        ]
-        session.view_test_groups.return_value = [
-            TestGroup(
-                name="samples",
-                pointsPolicy=PointsPolicy.EACH_TEST,
-                feedbackPolicy=FeedbackPolicy.POINTS,
-                dependencies=[],
-            ),
-            TestGroup(
-                name="unused",
-                pointsPolicy=PointsPolicy.COMPLETE_GROUP,
-                feedbackPolicy=FeedbackPolicy.ICPC,
-                dependencies=["ghost"],
-            ),
-        ]
-        session.get_solutions.return_value = [
-            _solution("main.cpp", SolutionTag.MA),
-            _solution("wa.cpp", SolutionTag.WA),
-        ]
-        session.get_validator_tests.return_value = [Mock()]
-        session.get_checker_tests.return_value = [Mock()]
-        session.get_packages.return_value = [_ready_package()]
-        session.get_general_tutorial.return_value = "tutorial"
         session_mock.return_value = session
 
         result = check_problem_readiness(problem_id=1)
@@ -428,6 +286,33 @@ class MpcProblemReadinessTest(unittest.TestCase):
         self.assertIn("以下测试组依赖了未定义的测试组: unused -> ghost", result["blocking_issues"])
         self.assertIn("以下测试组未分配任何测试: unused", result["warnings"])
         self.assertEqual(result["details"]["test_groups"]["defined_count"], 2)
+
+    @patch("src.mcp.utils.problem_readiness.get_problem_session")
+    def test_check_problem_readiness_reports_error_sections_in_summary(self, session_mock):
+        session = FakeProblemSession(
+            problems=[make_problem(modified=False)],
+            info=make_problem_info(),
+            statements={"english": make_statement()},
+            validator="validator.cpp",
+            checker="checker.cpp",
+            interactor="",
+            extra_validators=[],
+            files=RuntimeError("files broken"),
+            tests=[make_test(index=1, manual=True, input_text="1 2", use_in_statements=False)],
+            solutions=[make_solution("main.cpp", SolutionTag.MA)],
+            validator_tests=[Mock()],
+            checker_tests=[Mock()],
+            packages=[make_package(1, PackageState.READY)],
+            general_tutorial="tutorial",
+        )
+        session_mock.return_value = session
+
+        result = check_problem_readiness(problem_id=1)
+
+        self.assertFalse(result["ready"])
+        self.assertIn("题目文件 检查失败: files broken", result["blocking_issues"])
+        self.assertEqual(result["details"]["题目文件"]["status"], "error")
+        self.assertIn("题目文件", result["summary"]["sections_with_errors"])
 
 
 if __name__ == "__main__":

@@ -1,23 +1,8 @@
 import unittest
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 from src.mcp.utils.problem_release import prepare_problem_release
-from src.polygon.models import AccessType
-
-
-def _problem_snapshot(
-    revision: int,
-    latest_package: int | None,
-    modified: bool,
-):
-    problem = Mock()
-    problem.id = 1
-    problem.name = "A + B"
-    problem.accessType = AccessType.OWNER
-    problem.revision = revision
-    problem.latestPackage = latest_package
-    problem.modified = modified
-    return problem
+from tests.fake_problem_session import FakeProblemSession, SequenceValue, make_problem
 
 
 class MpcProblemReleaseTest(unittest.TestCase):
@@ -30,14 +15,14 @@ class MpcProblemReleaseTest(unittest.TestCase):
         readiness_mock,
         build_mock,
     ):
-        session = Mock()
-        session.update_working_copy.return_value = {"status": "OK"}
-        session.commit_changes.return_value = {"status": "OK", "result": {"committed": True}}
-        session.problem_id = 1
-        session.client.get_problems.side_effect = [
-            [_problem_snapshot(revision=10, latest_package=10, modified=True)],
-            [_problem_snapshot(revision=11, latest_package=11, modified=False)],
-        ]
+        session = FakeProblemSession(
+            problems_sequence=SequenceValue(
+                [make_problem(revision=10, latest_package=10, modified=True)],
+                [make_problem(revision=11, latest_package=11, modified=False)],
+            ),
+            update_working_copy_result={"status": "OK"},
+            commit_changes_result={"status": "OK", "result": {"committed": True}},
+        )
         session_mock.return_value = session
         readiness_mock.return_value = {
             "ready": True,
@@ -71,13 +56,38 @@ class MpcProblemReleaseTest(unittest.TestCase):
                 "force": False,
             },
         )
-        session.update_working_copy.assert_called_once_with()
         readiness_mock.assert_called_once_with(problem_id=1, pin=None, testset="tests")
         build_mock.assert_called_once()
-        session.commit_changes.assert_called_once_with(minor_changes=True, message="release")
+        self.assertEqual(session.calls["update_working_copy"], [{}])
+        self.assertEqual(
+            session.calls["commit_changes"],
+            [{"minor_changes": True, "message": "release"}],
+        )
         self.assertEqual(result["release_warnings"], [])
         self.assertEqual(result["pre_commit_snapshot"]["revision"], 10)
         self.assertEqual(result["post_commit_snapshot"]["revision"], 11)
+
+    @patch("src.mcp.utils.problem_release.build_problem_package_and_wait")
+    @patch("src.mcp.utils.problem_release.check_problem_readiness")
+    @patch("src.mcp.utils.problem_release.get_problem_session")
+    def test_prepare_problem_release_stops_when_update_fails(
+        self,
+        session_mock,
+        readiness_mock,
+        build_mock,
+    ):
+        session = FakeProblemSession(update_working_copy_result={"status": "FAILED"})
+        session_mock.return_value = session
+
+        result = prepare_problem_release(problem_id=1)
+
+        self.assertEqual(result["status"], "error")
+        self.assertEqual(result["stage"], "update_working_copy")
+        self.assertEqual(result["decision"], "update_failed")
+        self.assertEqual(result["can_proceed"], False)
+        readiness_mock.assert_not_called()
+        build_mock.assert_not_called()
+        self.assertNotIn("commit_changes", session.calls)
 
     @patch("src.mcp.utils.problem_release.build_problem_package_and_wait")
     @patch("src.mcp.utils.problem_release.check_problem_readiness")
@@ -88,8 +98,7 @@ class MpcProblemReleaseTest(unittest.TestCase):
         readiness_mock,
         build_mock,
     ):
-        session = Mock()
-        session.update_working_copy.return_value = {"status": "OK"}
+        session = FakeProblemSession(update_working_copy_result={"status": "OK"})
         session_mock.return_value = session
         readiness_mock.return_value = {
             "ready": False,
@@ -104,7 +113,7 @@ class MpcProblemReleaseTest(unittest.TestCase):
         self.assertEqual(result["can_proceed"], False)
         self.assertEqual(result["decision"], "blocking_issues")
         build_mock.assert_not_called()
-        session.commit_changes.assert_not_called()
+        self.assertNotIn("commit_changes", session.calls)
 
     @patch("src.mcp.utils.problem_release.build_problem_package_and_wait")
     @patch("src.mcp.utils.problem_release.check_problem_readiness")
@@ -115,8 +124,7 @@ class MpcProblemReleaseTest(unittest.TestCase):
         readiness_mock,
         build_mock,
     ):
-        session = Mock()
-        session.update_working_copy.return_value = {"status": "OK"}
+        session = FakeProblemSession(update_working_copy_result={"status": "OK"})
         session_mock.return_value = session
         readiness_mock.return_value = {
             "ready": True,
@@ -130,7 +138,70 @@ class MpcProblemReleaseTest(unittest.TestCase):
         self.assertEqual(result["stage"], "readiness")
         self.assertEqual(result["decision"], "warnings_not_allowed")
         build_mock.assert_not_called()
-        session.commit_changes.assert_not_called()
+        self.assertNotIn("commit_changes", session.calls)
+
+    @patch("src.mcp.utils.problem_release.build_problem_package_and_wait")
+    @patch("src.mcp.utils.problem_release.check_problem_readiness")
+    @patch("src.mcp.utils.problem_release.get_problem_session")
+    def test_prepare_problem_release_allows_warnings_when_requested(
+        self,
+        session_mock,
+        readiness_mock,
+        build_mock,
+    ):
+        session = FakeProblemSession(
+            problems_sequence=SequenceValue(
+                [make_problem(revision=1, latest_package=1, modified=True)],
+                [make_problem(revision=2, latest_package=2, modified=False)],
+            ),
+            update_working_copy_result={"status": "OK"},
+            commit_changes_result={"status": "OK"},
+        )
+        session_mock.return_value = session
+        readiness_mock.return_value = {
+            "ready": True,
+            "blocking_issues": [],
+            "warnings": ["存在非阻塞警告"],
+        }
+        build_mock.return_value = {"status": "success", "package": {"id": 1, "revision": 2}}
+
+        result = prepare_problem_release(problem_id=1, allow_warnings=True)
+
+        self.assertEqual(result["status"], "success")
+        self.assertEqual(result["decision"], "released")
+        self.assertEqual(session.calls["commit_changes"], [{"minor_changes": None, "message": None}])
+
+    @patch("src.mcp.utils.problem_release.build_problem_package_and_wait")
+    @patch("src.mcp.utils.problem_release.check_problem_readiness")
+    @patch("src.mcp.utils.problem_release.get_problem_session")
+    def test_prepare_problem_release_force_bypasses_readiness_blocks(
+        self,
+        session_mock,
+        readiness_mock,
+        build_mock,
+    ):
+        session = FakeProblemSession(
+            problems_sequence=SequenceValue(
+                [make_problem(revision=3, latest_package=3, modified=True)],
+                [make_problem(revision=4, latest_package=4, modified=False)],
+            ),
+            update_working_copy_result={"status": "OK"},
+            commit_changes_result={"status": "OK"},
+        )
+        session_mock.return_value = session
+        readiness_mock.return_value = {
+            "ready": False,
+            "blocking_issues": ["缺少样例"],
+            "warnings": ["存在警告"],
+        }
+        build_mock.return_value = {"status": "success", "package": {"id": 1, "revision": 4}}
+
+        result = prepare_problem_release(problem_id=1, force=True)
+
+        self.assertEqual(result["status"], "success")
+        self.assertEqual(result["stage"], "completed")
+        self.assertEqual(result["readiness"]["blocking_issues"], ["缺少样例"])
+        self.assertEqual(result["readiness"]["warnings"], ["存在警告"])
 
     @patch("src.mcp.utils.problem_release.build_problem_package_and_wait")
     @patch("src.mcp.utils.problem_release.check_problem_readiness")
@@ -141,8 +212,7 @@ class MpcProblemReleaseTest(unittest.TestCase):
         readiness_mock,
         build_mock,
     ):
-        session = Mock()
-        session.update_working_copy.return_value = {"status": "OK"}
+        session = FakeProblemSession(update_working_copy_result={"status": "OK"})
         session_mock.return_value = session
         readiness_mock.return_value = {
             "ready": True,
@@ -157,7 +227,36 @@ class MpcProblemReleaseTest(unittest.TestCase):
         self.assertEqual(result["stage"], "build")
         self.assertEqual(result["can_proceed"], False)
         self.assertEqual(result["decision"], "build_failed")
-        session.commit_changes.assert_not_called()
+        self.assertNotIn("commit_changes", session.calls)
+
+    @patch("src.mcp.utils.problem_release.build_problem_package_and_wait")
+    @patch("src.mcp.utils.problem_release.check_problem_readiness")
+    @patch("src.mcp.utils.problem_release.get_problem_session")
+    def test_prepare_problem_release_reports_commit_failure(
+        self,
+        session_mock,
+        readiness_mock,
+        build_mock,
+    ):
+        session = FakeProblemSession(
+            problems=[make_problem(revision=5, latest_package=5, modified=True)],
+            update_working_copy_result={"status": "OK"},
+            commit_changes_result={"status": "FAILED"},
+        )
+        session_mock.return_value = session
+        readiness_mock.return_value = {
+            "ready": True,
+            "blocking_issues": [],
+            "warnings": [],
+        }
+        build_mock.return_value = {"status": "success", "package": {"id": 1, "revision": 5}}
+
+        result = prepare_problem_release(problem_id=1)
+
+        self.assertEqual(result["status"], "error")
+        self.assertEqual(result["stage"], "commit")
+        self.assertEqual(result["decision"], "commit_failed")
+        self.assertEqual(result["pre_commit_snapshot"]["revision"], 5)
 
     @patch("src.mcp.utils.problem_release.build_problem_package_and_wait")
     @patch("src.mcp.utils.problem_release.check_problem_readiness")
@@ -168,14 +267,14 @@ class MpcProblemReleaseTest(unittest.TestCase):
         readiness_mock,
         build_mock,
     ):
-        session = Mock()
-        session.update_working_copy.return_value = {"status": "OK"}
-        session.commit_changes.return_value = {"status": "OK", "result": {"committed": True}}
-        session.problem_id = 1
-        session.client.get_problems.side_effect = [
-            [_problem_snapshot(revision=10, latest_package=10, modified=True)],
-            [_problem_snapshot(revision=12, latest_package=11, modified=True)],
-        ]
+        session = FakeProblemSession(
+            problems_sequence=SequenceValue(
+                [make_problem(revision=10, latest_package=10, modified=True)],
+                [make_problem(revision=12, latest_package=11, modified=True)],
+            ),
+            update_working_copy_result={"status": "OK"},
+            commit_changes_result={"status": "OK", "result": {"committed": True}},
+        )
         session_mock.return_value = session
         readiness_mock.return_value = {
             "ready": True,
@@ -196,6 +295,27 @@ class MpcProblemReleaseTest(unittest.TestCase):
             "构建包 revision=11，提交后题目 revision=12，请确认发布的是预期版本",
             result["release_warnings"],
         )
+
+    @patch("src.mcp.utils.problem_release.build_problem_package_and_wait")
+    @patch("src.mcp.utils.problem_release.check_problem_readiness", side_effect=RuntimeError("readiness crashed"))
+    @patch("src.mcp.utils.problem_release.get_problem_session")
+    def test_prepare_problem_release_reports_unexpected_error(
+        self,
+        session_mock,
+        _readiness_mock,
+        build_mock,
+    ):
+        session = FakeProblemSession(update_working_copy_result={"status": "OK"})
+        session_mock.return_value = session
+
+        result = prepare_problem_release(problem_id=1)
+
+        self.assertEqual(result["status"], "error")
+        self.assertEqual(result["stage"], "unexpected_error")
+        self.assertEqual(result["decision"], "unexpected_error")
+        self.assertEqual(result["error_type"], "RuntimeError")
+        self.assertIn("readiness crashed", result["error"])
+        build_mock.assert_not_called()
 
 
 if __name__ == "__main__":

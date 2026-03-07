@@ -7,7 +7,7 @@ from src.polygon.models import (
     ProblemFiles,
     ResourceAsset,
     ResourceStage,
-    TestGroup,
+    TestGroup as PolygonTestGroup,
 )
 
 
@@ -63,7 +63,7 @@ class PolygonModelsTest(unittest.TestCase):
         self.assertEqual(package.type, PackageType.LINUX)
 
     def test_test_group_from_dict_parses_policies(self):
-        group = TestGroup.from_dict(
+        group = PolygonTestGroup.from_dict(
             {
                 "name": "samples",
                 "pointsPolicy": "EACH_TEST",
