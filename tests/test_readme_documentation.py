@@ -54,6 +54,15 @@ class ReadmeDocumentationTest(unittest.TestCase):
         ):
             self.assertIn(term, self.readme)
 
+    def test_readme_documents_release_notes_workflow(self):
+        for term in (
+            "CHANGELOG.md",
+            "release notes",
+            "新增工具、修复问题和兼容性变更",
+            "git tag v0.12.1 && git push origin v0.12.1",
+        ):
+            self.assertIn(term, self.readme)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -52,15 +52,25 @@ jobs:
           with Path("pyproject.toml").open("rb") as f:
               project = tomllib.load(f)["project"]
 
+          changelog_text = Path("CHANGELOG.md").read_text(encoding="utf-8")
           name = project["name"]
           version = project["version"]
           tag = os.environ["GITHUB_REF_NAME"]
           expected_tag = f"v{version}"
+          version_heading = f"## [{version}]"
 
           if tag != expected_tag:
               raise SystemExit(
                   f"Git tag {tag!r} does not match project version {version!r}. "
                   f"Expected {expected_tag!r}."
+              )
+
+          if "## [Unreleased]" not in changelog_text:
+              raise SystemExit("CHANGELOG.md must contain an [Unreleased] section.")
+
+          if version_heading not in changelog_text:
+              raise SystemExit(
+                  f"CHANGELOG.md does not contain a release note section for {version!r}."
               )
 
           exists = False

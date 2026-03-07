@@ -249,13 +249,15 @@ python -m unittest discover -s tests -v
 仓库包含两个 GitHub Actions 工作流：
 
 - [ci.yml](.github/workflows/ci.yml)：在 `push` 到 `main` 或收到 `pull_request` 时运行，使用 Python 3.11 安装依赖、执行 `python -m unittest discover -s tests -v`，并构建 `sdist` 和 `wheel`
-- [publish.yml](.github/workflows/publish.yml)：仅在推送版本 tag（如 `v0.12.0`）时运行，会重新执行测试与构建，校验 tag 与 `pyproject.toml` 中的版本一致，并在该版本尚未发布到 PyPI 时上传发行包
+- [publish.yml](.github/workflows/publish.yml)：仅在推送版本 tag（如 `v0.12.1`）时运行，会重新执行测试与构建，校验 tag 与 `pyproject.toml` 中的版本一致，要求 [CHANGELOG.md](CHANGELOG.md) 中存在该版本的发布记录，并在该版本尚未发布到 PyPI 时上传发行包
 
 推荐的发布流程：
 
-1. 更新 [pyproject.toml](pyproject.toml) 中的版本号并推送到 `main`
+1. 更新 [pyproject.toml](pyproject.toml) 中的版本号，并在 [CHANGELOG.md](CHANGELOG.md) 中补上该版本的发布记录
 2. 等待 [ci.yml](.github/workflows/ci.yml) 通过
-3. 创建并推送对应版本 tag，例如 `git tag v0.12.0 && git push origin v0.12.0`
+3. 创建并推送对应版本 tag，例如 `git tag v0.12.1 && git push origin v0.12.1`
+
+建议把 changelog 直接当作 release notes 的单一来源：每次发布至少记录新增工具、修复问题和兼容性变更。`publish.yml` 会在发版前检查 `CHANGELOG.md` 是否包含当前版本条目，避免漏写发布说明。
 
 要让自动发布生效，需要先在 PyPI 的 Trusted Publisher 中添加这个 GitHub 仓库：
 
