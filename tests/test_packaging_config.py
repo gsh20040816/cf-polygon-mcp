@@ -10,6 +10,9 @@ class PackagingConfigTest(unittest.TestCase):
         self.root = Path(__file__).resolve().parents[1]
         self.pyproject = tomllib.loads((self.root / "pyproject.toml").read_text(encoding="utf-8"))
 
+    def read_workflow(self, name: str) -> str:
+        return (self.root / ".github" / "workflows" / name).read_text(encoding="utf-8")
+
     def test_find_packages_discovers_all_src_packages(self):
         expected_packages = sorted(
             ".".join(package_init.parent.relative_to(self.root).parts)
@@ -33,13 +36,28 @@ class PackagingConfigTest(unittest.TestCase):
     def test_project_requires_python_311(self):
         self.assertEqual(self.pyproject["project"]["requires-python"], ">=3.11")
 
-    def test_publish_workflow_validates_python_311(self):
-        workflow_text = (self.root / ".github" / "workflows" / "publish.yml").read_text(
-            encoding="utf-8"
-        )
+    def test_ci_workflow_runs_on_main_and_pull_requests(self):
+        workflow_text = self.read_workflow("ci.yml")
 
         self.assertIn('python-version: "3.11"', workflow_text)
         self.assertIn("python -m pip install --upgrade pip build setuptools", workflow_text)
+        self.assertIn("push:", workflow_text)
+        self.assertIn("branches:", workflow_text)
+        self.assertIn("- main", workflow_text)
+        self.assertIn("pull_request:", workflow_text)
+        self.assertIn("python -m unittest discover -s tests -v", workflow_text)
+        self.assertIn("python -m build", workflow_text)
+
+    def test_publish_workflow_requires_version_tag(self):
+        workflow_text = self.read_workflow("publish.yml")
+
+        self.assertIn('python-version: "3.11"', workflow_text)
+        self.assertIn("python -m pip install --upgrade pip build setuptools", workflow_text)
+        self.assertIn("tags:", workflow_text)
+        self.assertIn('- "v*"', workflow_text)
+        self.assertNotIn("branches:\n      - main", workflow_text)
+        self.assertIn('expected_tag = f"v{version}"', workflow_text)
+        self.assertIn("if tag != expected_tag:", workflow_text)
 
 
 if __name__ == "__main__":

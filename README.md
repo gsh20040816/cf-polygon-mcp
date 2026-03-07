@@ -65,12 +65,16 @@ python -m unittest discover -s tests -v
 
 ## GitHub 自动发版
 
-仓库包含 GitHub Actions 工作流 [publish.yml](.github/workflows/publish.yml)。当代码 `push` 到 `main` 后，工作流会：
+仓库包含两个 GitHub Actions 工作流：
 
-- 使用 Python 3.11 安装依赖与运行测试
-- 运行 `python -m unittest discover -s tests -v`
-- 构建 `sdist` 和 `wheel`
-- 如果 `pyproject.toml` 中的版本尚未发布到 PyPI，则自动发布
+- [ci.yml](.github/workflows/ci.yml)：在 `push` 到 `main` 或收到 `pull_request` 时运行，使用 Python 3.11 安装依赖、执行 `python -m unittest discover -s tests -v`，并构建 `sdist` 和 `wheel`
+- [publish.yml](.github/workflows/publish.yml)：仅在推送版本 tag（如 `v0.10.0`）时运行，会重新执行测试与构建，校验 tag 与 `pyproject.toml` 中的版本一致，并在该版本尚未发布到 PyPI 时上传发行包
+
+推荐的发布流程：
+
+1. 更新 [pyproject.toml](pyproject.toml) 中的版本号并推送到 `main`
+2. 等待 [ci.yml](.github/workflows/ci.yml) 通过
+3. 创建并推送对应版本 tag，例如 `git tag v0.10.0 && git push origin v0.10.0`
 
 要让自动发布生效，需要先在 PyPI 的 Trusted Publisher 中添加这个 GitHub 仓库：
 

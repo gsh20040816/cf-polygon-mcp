@@ -2,8 +2,8 @@ name: Publish Python Package
 
 on:
   push:
-    branches:
-      - main
+    tags:
+      - "v*"
 
 permissions:
   contents: read
@@ -38,11 +38,12 @@ jobs:
       - name: Build distributions
         run: python -m build
 
-      - name: Check whether this version should be published
+      - name: Check release metadata
         id: package-meta
         run: |
           python - <<'PY' >> "$GITHUB_OUTPUT"
           import json
+          import os
           import tomllib
           import urllib.error
           import urllib.request
@@ -53,6 +54,15 @@ jobs:
 
           name = project["name"]
           version = project["version"]
+          tag = os.environ["GITHUB_REF_NAME"]
+          expected_tag = f"v{version}"
+
+          if tag != expected_tag:
+              raise SystemExit(
+                  f"Git tag {tag!r} does not match project version {version!r}. "
+                  f"Expected {expected_tag!r}."
+              )
+
           exists = False
 
           try:
@@ -64,6 +74,7 @@ jobs:
                   raise
 
           print(f"version={version}")
+          print(f"expected_tag={expected_tag}")
           print(f"should_publish={'false' if exists else 'true'}")
           PY
 
