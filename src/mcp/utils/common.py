@@ -205,6 +205,25 @@ def run_write_operation(
     )
 
 
+def build_recovery_action(
+    *,
+    action: str,
+    description: str,
+    tool: Optional[str] = None,
+    params: Optional[dict[str, Any]] = None,
+) -> dict[str, Any]:
+    """构建 workflow 失败后的恢复动作建议。"""
+    payload: dict[str, Any] = {
+        "action": action,
+        "description": description,
+    }
+    if tool is not None:
+        payload["tool"] = tool
+    if params:
+        payload["params"] = sanitize_sensitive_data(params)
+    return payload
+
+
 def parse_enum(enum_type: Type[Enum], value: str, field_name: str):
     """把字符串解析为枚举，出错时返回更友好的提示。"""
     try:

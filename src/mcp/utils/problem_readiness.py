@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
-from src.mcp.utils.common import get_problem_session
+from src.mcp.utils.common import build_recovery_action, get_problem_session
 from src.polygon.models import PackageState, SolutionTag
 
 
@@ -69,6 +69,40 @@ def _build_summary(
         "error_section_count": len(error_sections),
         "sections_with_errors": error_sections,
     }
+
+
+def _build_recovery_actions(
+    summary: dict[str, Any],
+    *,
+    problem_id: int,
+    testset: str,
+) -> list[dict[str, Any]]:
+    recommendation = summary["recommendation"]
+    if recommendation == "fix_blocking_issues":
+        return [
+            build_recovery_action(
+                action="fix_blocking_issues",
+                description="根据 blocking_issues 修复题目配置后重新执行 readiness 检查。",
+                tool="check_problem_readiness",
+                params={"problem_id": problem_id, "testset": testset},
+            )
+        ]
+    if recommendation == "review_warnings":
+        return [
+            build_recovery_action(
+                action="review_warnings",
+                description="确认 warnings 是否需要修复，必要时修复后重新执行 readiness 检查。",
+                tool="check_problem_readiness",
+                params={"problem_id": problem_id, "testset": testset},
+            ),
+            build_recovery_action(
+                action="continue_release_with_warning_policy",
+                description="如果 warnings 可接受，可在发布流程中显式设置 allow_warnings=True。",
+                tool="prepare_problem_release",
+                params={"problem_id": problem_id, "testset": testset, "allow_warnings": True},
+            ),
+        ]
+    return []
 
 
 def check_problem_readiness(
@@ -406,8 +440,18 @@ def check_problem_readiness(
         _append_check_error("通用题解", exc, blocking_issues, details)
 
     summary = _build_summary(blocking_issues, warnings, details)
+    can_retry = summary["status"] != "ready"
+    decision = summary["recommendation"]
     return {
         "status": "success",
+        "stage": "completed",
+        "decision": decision,
+        "can_retry": can_retry,
+        "recovery_actions": _build_recovery_actions(
+            summary,
+            problem_id=problem_id,
+            testset=testset,
+        ),
         "ready": not blocking_issues,
         "blocking_issues": blocking_issues,
         "warnings": warnings,

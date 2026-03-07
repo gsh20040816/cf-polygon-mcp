@@ -42,6 +42,8 @@ class MpcProblemReleaseTest(unittest.TestCase):
         self.assertEqual(result["action"], "prepare_problem_release")
         self.assertEqual(result["stage"], "completed")
         self.assertEqual(result["can_proceed"], True)
+        self.assertEqual(result["can_retry"], False)
+        self.assertEqual(result["recovery_actions"], [])
         self.assertEqual(
             result["release_options"],
             {
@@ -85,6 +87,8 @@ class MpcProblemReleaseTest(unittest.TestCase):
         self.assertEqual(result["stage"], "update_working_copy")
         self.assertEqual(result["decision"], "update_failed")
         self.assertEqual(result["can_proceed"], False)
+        self.assertEqual(result["can_retry"], True)
+        self.assertEqual(result["recovery_actions"][0]["action"], "retry_working_copy_update")
         readiness_mock.assert_not_called()
         build_mock.assert_not_called()
         self.assertNotIn("commit_changes", session.calls)
@@ -112,6 +116,8 @@ class MpcProblemReleaseTest(unittest.TestCase):
         self.assertEqual(result["stage"], "readiness")
         self.assertEqual(result["can_proceed"], False)
         self.assertEqual(result["decision"], "blocking_issues")
+        self.assertEqual(result["can_retry"], True)
+        self.assertEqual(result["recovery_actions"][0]["action"], "fix_readiness_blockers")
         build_mock.assert_not_called()
         self.assertNotIn("commit_changes", session.calls)
 
@@ -137,6 +143,8 @@ class MpcProblemReleaseTest(unittest.TestCase):
         self.assertEqual(result["status"], "blocked")
         self.assertEqual(result["stage"], "readiness")
         self.assertEqual(result["decision"], "warnings_not_allowed")
+        self.assertEqual(result["can_retry"], True)
+        self.assertEqual(result["recovery_actions"][1]["action"], "retry_with_allow_warnings")
         build_mock.assert_not_called()
         self.assertNotIn("commit_changes", session.calls)
 
@@ -169,6 +177,7 @@ class MpcProblemReleaseTest(unittest.TestCase):
 
         self.assertEqual(result["status"], "success")
         self.assertEqual(result["decision"], "released")
+        self.assertEqual(result["recovery_actions"], [])
         self.assertEqual(session.calls["commit_changes"], [{"minor_changes": None, "message": None}])
 
     @patch("src.mcp.utils.problem_release.build_problem_package_and_wait")
@@ -227,6 +236,8 @@ class MpcProblemReleaseTest(unittest.TestCase):
         self.assertEqual(result["stage"], "build")
         self.assertEqual(result["can_proceed"], False)
         self.assertEqual(result["decision"], "build_failed")
+        self.assertEqual(result["can_retry"], True)
+        self.assertEqual(result["recovery_actions"][0]["action"], "retry_build")
         self.assertNotIn("commit_changes", session.calls)
 
     @patch("src.mcp.utils.problem_release.build_problem_package_and_wait")
@@ -256,6 +267,8 @@ class MpcProblemReleaseTest(unittest.TestCase):
         self.assertEqual(result["status"], "error")
         self.assertEqual(result["stage"], "commit")
         self.assertEqual(result["decision"], "commit_failed")
+        self.assertEqual(result["can_retry"], True)
+        self.assertEqual(result["recovery_actions"][0]["action"], "retry_commit_only")
         self.assertEqual(result["pre_commit_snapshot"]["revision"], 5)
 
     @patch("src.mcp.utils.problem_release.build_problem_package_and_wait")
@@ -313,6 +326,8 @@ class MpcProblemReleaseTest(unittest.TestCase):
         self.assertEqual(result["status"], "error")
         self.assertEqual(result["stage"], "unexpected_error")
         self.assertEqual(result["decision"], "unexpected_error")
+        self.assertEqual(result["can_retry"], True)
+        self.assertEqual(result["recovery_actions"][0]["action"], "rerun_release_workflow")
         self.assertEqual(result["error_type"], "RuntimeError")
         self.assertIn("readiness crashed", result["error"])
         build_mock.assert_not_called()

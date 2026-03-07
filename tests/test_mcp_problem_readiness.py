@@ -59,6 +59,10 @@ class MpcProblemReadinessTest(unittest.TestCase):
         result = check_problem_readiness(problem_id=1)
 
         self.assertTrue(result["ready"])
+        self.assertEqual(result["stage"], "completed")
+        self.assertEqual(result["decision"], "ready_for_release")
+        self.assertEqual(result["can_retry"], False)
+        self.assertEqual(result["recovery_actions"], [])
         self.assertEqual(result["blocking_issues"], [])
         self.assertEqual(result["warnings"], [])
         self.assertEqual(result["summary"]["status"], "ready")
@@ -95,6 +99,9 @@ class MpcProblemReadinessTest(unittest.TestCase):
         result = check_problem_readiness(problem_id=1)
 
         self.assertFalse(result["ready"])
+        self.assertEqual(result["decision"], "fix_blocking_issues")
+        self.assertEqual(result["can_retry"], True)
+        self.assertEqual(result["recovery_actions"][0]["action"], "fix_blocking_issues")
         self.assertIn("缺少题面", result["blocking_issues"])
         self.assertIn("未设置 validator", result["blocking_issues"])
         self.assertIn("交互题未设置 interactor", result["blocking_issues"])
@@ -136,6 +143,9 @@ class MpcProblemReadinessTest(unittest.TestCase):
         result = check_problem_readiness(problem_id=1)
 
         self.assertTrue(result["ready"])
+        self.assertEqual(result["decision"], "review_warnings")
+        self.assertEqual(result["can_retry"], True)
+        self.assertEqual(result["recovery_actions"][0]["action"], "review_warnings")
         self.assertIn("缺少 english 题面", result["warnings"])
         self.assertIn("未显式设置 checker，将依赖 Polygon 默认比较器", result["warnings"])
         self.assertIn("当前题目不是交互题，但设置了 interactor", result["warnings"])
