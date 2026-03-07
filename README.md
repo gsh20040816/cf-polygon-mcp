@@ -41,7 +41,7 @@
 
 ## 开发
 
-1. 确保你已经安装了 Python 3.13 及以上版本。
+1. 确保你已经安装了 Python 3.11 及以上版本。
 2. 克隆项目：
 ```bash
 git clone https://github.com/gsh20040816/cf-polygon-mcp.git
@@ -67,7 +67,7 @@ python -m unittest discover -s tests -v
 
 仓库包含 GitHub Actions 工作流 [publish.yml](.github/workflows/publish.yml)。当代码 `push` 到 `main` 后，工作流会：
 
-- 使用 Python 3.13 安装依赖
+- 使用 Python 3.11 安装依赖与运行测试
 - 运行 `python -m unittest discover -s tests -v`
 - 构建 `sdist` 和 `wheel`
 - 如果 `pyproject.toml` 中的版本尚未发布到 PyPI，则自动发布
