@@ -4,7 +4,11 @@ import unittest
 from pathlib import Path
 
 from src.mcp.server import register_tools
-from src.mcp.tool_registry import get_registered_tool_names, validate_tool_registry
+from src.mcp.tool_registry import TOOL_REGISTRY, get_registered_tool_names, validate_tool_registry
+from src.mcp.utils.downloads import download_problem_package_info_by_url
+from src.mcp.utils.problem_content import save_problem_file
+from src.mcp.utils.problem_package_workflow import build_problem_package_and_wait
+from src.mcp.utils.problem_tests_extended import save_problem_checker_test, save_problem_test_group
 
 
 class _FakeMCP:
@@ -56,6 +60,36 @@ class MpcServerRegistryTest(unittest.TestCase):
 
     def test_validate_tool_registry_passes_for_current_registry(self):
         validate_tool_registry()
+
+    def test_registered_tools_have_structured_docstrings(self):
+        for registration in TOOL_REGISTRY:
+            doc = inspect.getdoc(registration.func)
+            self.assertIsNotNone(doc, msg=f"{registration.name} 缺少 docstring")
+            self.assertIn(f"类型：{registration.category}", doc)
+            self.assertIn("参数：", doc)
+            self.assertIn("前置条件：", doc)
+            self.assertIn("返回：", doc)
+
+    def test_docstrings_include_value_hints_and_return_contracts(self):
+        save_problem_file_doc = inspect.getdoc(save_problem_file)
+        self.assertIn("可选值: resource, source, aux", save_problem_file_doc)
+        self.assertIn("可选值: solution, validator, checker, interactor, main", save_problem_file_doc)
+
+        save_problem_test_group_doc = inspect.getdoc(save_problem_test_group)
+        self.assertIn("可选值: COMPLETE_GROUP, EACH_TEST", save_problem_test_group_doc)
+        self.assertIn("可选值: NONE, POINTS, ICPC, COMPLETE", save_problem_test_group_doc)
+
+        save_problem_checker_test_doc = inspect.getdoc(save_problem_checker_test)
+        self.assertIn(
+            "可选值: OK, WRONG_ANSWER, PRESENTATION_ERROR, CRASHED",
+            save_problem_checker_test_doc,
+        )
+
+        build_problem_package_and_wait_doc = inspect.getdoc(build_problem_package_and_wait)
+        self.assertIn("stage、decision、can_retry、recovery_actions", build_problem_package_and_wait_doc)
+
+        download_info_doc = inspect.getdoc(download_problem_package_info_by_url)
+        self.assertIn("source_url、filename、content_kind、size_bytes、sha256", download_info_doc)
 
 
 if __name__ == "__main__":
